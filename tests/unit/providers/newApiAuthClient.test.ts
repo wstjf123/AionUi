@@ -5,12 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  __resetSessionsForTest,
-  fetchGroups,
-  login,
-  provision,
-} from '@/process/services/newApiAuth/client';
+import { __resetSessionsForTest, fetchGroups, login, provision } from '@/process/services/newApiAuth/client';
 
 type FetchMock = ReturnType<typeof vi.fn>;
 
@@ -108,9 +103,7 @@ describe('newApiAuth.client', () => {
     });
 
     it('treats login response without Set-Cookie as failure', async () => {
-      fetchMock.mockResolvedValueOnce(
-        loginResponse(200, { success: true, data: { id: 1, username: 'a' } }, false)
-      );
+      fetchMock.mockResolvedValueOnce(loginResponse(200, { success: true, data: { id: 1, username: 'a' } }, false));
       const res = await login({ username: 'a', password: 'b' });
       expect(res.success).toBe(false);
       if (res.success) return;
@@ -128,9 +121,7 @@ describe('newApiAuth.client', () => {
     });
 
     it('forwards the cookie and normalizes the group list', async () => {
-      fetchMock.mockResolvedValueOnce(
-        loginResponse(200, { success: true, data: { id: 1, username: 'a' } })
-      );
+      fetchMock.mockResolvedValueOnce(loginResponse(200, { success: true, data: { id: 1, username: 'a' } }));
       const loginRes = await login({ username: 'a', password: 'b' });
       expect(loginRes.success).toBe(true);
       if (!loginRes.success) return;
@@ -162,9 +153,7 @@ describe('newApiAuth.client', () => {
     });
 
     it('drops the session and returns session_expired on 401', async () => {
-      fetchMock.mockResolvedValueOnce(
-        loginResponse(200, { success: true, data: { id: 7, username: 'a' } })
-      );
+      fetchMock.mockResolvedValueOnce(loginResponse(200, { success: true, data: { id: 7, username: 'a' } }));
       const loginRes = await login({ username: 'a', password: 'b' });
       expect(loginRes.success).toBe(true);
       if (!loginRes.success) return;
@@ -186,9 +175,7 @@ describe('newApiAuth.client', () => {
 
   describe('provision', () => {
     async function loginAndGetSession() {
-      fetchMock.mockResolvedValueOnce(
-        loginResponse(200, { success: true, data: { id: 7, username: 'a' } })
-      );
+      fetchMock.mockResolvedValueOnce(loginResponse(200, { success: true, data: { id: 7, username: 'a' } }));
       const res = await login({ username: 'a', password: 'b' });
       if (!res.success) throw new Error('login should succeed in test setup');
       return res.session_id;
@@ -210,9 +197,7 @@ describe('newApiAuth.client', () => {
       // The above search returned the wrong name; the first time, the client
       // will not match. Reset to provide the matching item instead.
       fetchMock.mockReset();
-      fetchMock.mockResolvedValueOnce(
-        loginResponse(200, { success: true, data: { id: 7, username: 'a' } })
-      );
+      fetchMock.mockResolvedValueOnce(loginResponse(200, { success: true, data: { id: 7, username: 'a' } }));
       const fresh = await login({ username: 'a', password: 'b' });
       if (!fresh.success) throw new Error('expected fresh login');
 
@@ -248,9 +233,7 @@ describe('newApiAuth.client', () => {
       expect(res.data.token_name.startsWith('aionui-vip-')).toBe(true);
 
       // Sanity-check the create payload includes the group field.
-      const createCall = readCalls(fetchMock).find(
-        (c) => c.url.endsWith('/api/token/') && (c.init?.method === 'POST')
-      );
+      const createCall = readCalls(fetchMock).find((c) => c.url.endsWith('/api/token/') && c.init?.method === 'POST');
       expect(createCall).toBeDefined();
       const body = JSON.parse(String(createCall!.init!.body));
       expect(body.group).toBe('vip');

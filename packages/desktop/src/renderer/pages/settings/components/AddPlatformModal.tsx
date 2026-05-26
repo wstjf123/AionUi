@@ -209,10 +209,7 @@ const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) =>
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [provisioning, setProvisioning] = useState(false);
 
-  const messageForCode = (
-    code: string,
-    fallback?: string
-  ): string => {
+  const messageForCode = (code: string, fallback?: string): string => {
     const key = `settings.newApiLogin.errors.${code}`;
     const translated = t(key);
     if (translated !== key) return translated;
@@ -336,9 +333,7 @@ const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) =>
           <Form.Item
             label={t('settings.newApiLogin.group')}
             layout='vertical'
-            extra={
-              <span className='text-11px text-t-secondary'>{t('settings.newApiLogin.groupHint')}</span>
-            }
+            extra={<span className='text-11px text-t-secondary'>{t('settings.newApiLogin.groupHint')}</span>}
           >
             <Select
               value={selectedGroup}
@@ -361,12 +356,7 @@ const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) =>
             </Select>
           </Form.Item>
           <div className='flex gap-8px'>
-            <Button
-              type='primary'
-              loading={provisioning}
-              disabled={!selectedGroup}
-              onClick={handleProvision}
-            >
+            <Button type='primary' loading={provisioning} disabled={!selectedGroup} onClick={handleProvision}>
               {t('settings.newApiLogin.useGroup')}
             </Button>
             <Button onClick={handleSwitchAccount} disabled={provisioning}>
@@ -664,9 +654,7 @@ const AddPlatformModal = ModalHOC<{
                 void modelListState.mutate({
                   models: models.map((id) => ({ label: id, value: id })),
                 });
-                message.success(
-                  t('settings.newApiLogin.provisionSuccess', { group })
-                );
+                message.success(t('settings.newApiLogin.provisionSuccess', { group }));
                 setNewApiMode('apiKey');
               }}
             />

@@ -76,6 +76,13 @@ export type NewApiProvisionResult =
   | { success: true; data: NewApiProvisionPayload }
   | {
       success: false;
-      code: 'session_expired' | 'token_create_failed' | 'token_lookup_failed' | 'models_failed' | 'network_error' | 'server_error' | 'unknown';
+      code:
+        | 'session_expired'
+        | 'token_create_failed'
+        | 'token_lookup_failed'
+        | 'models_failed'
+        | 'network_error'
+        | 'server_error'
+        | 'unknown';
       message: string;
     };

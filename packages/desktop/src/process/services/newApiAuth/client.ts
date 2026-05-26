@@ -303,7 +303,10 @@ export async function provision(req: NewApiProvisionRequest): Promise<NewApiProv
   }
 
   const createBody = await readJson(createResp);
-  if (!createResp.ok || !(createBody && typeof createBody === 'object' && (createBody as { success?: boolean }).success)) {
+  if (
+    !createResp.ok ||
+    !(createBody && typeof createBody === 'object' && (createBody as { success?: boolean }).success)
+  ) {
     return {
       success: false,
       code: 'token_create_failed',
