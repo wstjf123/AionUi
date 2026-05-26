@@ -4,5 +4,5 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export { login, fetchGroups, provision, logout, __resetSessionsForTest } from './client';
+export { login, fetchGroups, provision, logout, fetchBalance, __resetSessionsForTest } from './client';
 export { initNewApiAuthBridge } from './bridge';

@@ -227,6 +227,11 @@
     "switchAccount": "Змінити обліковий запис",
     "noGroups": "У цього облікового запису немає доступних груп.",
     "provisionSuccess": "API-ключ створено для групи «{{group}}».",
+    "balanceLabel": "Баланс",
+    "balanceLoading": "Завантаження…",
+    "balanceError": "Помилка запиту",
+    "balanceUnlimited": "Без обмежень",
+    "balanceTooltip": "Натисніть, щоб оновити",
     "errors": {
       "empty": "Введіть імʼя користувача та пароль.",
       "invalid_credentials": "Неправильні імʼя користувача або пароль.",

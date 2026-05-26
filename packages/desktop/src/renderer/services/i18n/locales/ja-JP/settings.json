@@ -229,6 +229,11 @@
     "switchAccount": "アカウントを切り替え",
     "noGroups": "このアカウントに利用可能なグループはありません。",
     "provisionSuccess": "グループ「{{group}}」用の API キーを発行しました。",
+    "balanceLabel": "残高",
+    "balanceLoading": "読み込み中…",
+    "balanceError": "取得失敗",
+    "balanceUnlimited": "無制限",
+    "balanceTooltip": "クリックで残高を更新",
     "errors": {
       "empty": "ユーザー名とパスワードを入力してください。",
       "invalid_credentials": "ユーザー名またはパスワードが正しくありません。",

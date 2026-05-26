@@ -34,6 +34,8 @@ import type {
 } from '../types/provider/providerApi';
 import type { SpeechToTextRequest, SpeechToTextResult } from '../types/provider/speech';
 import type {
+  NewApiBalanceRequest,
+  NewApiBalanceResult,
   NewApiGroupsResult,
   NewApiLoginRequest,
   NewApiLoginResult,
@@ -444,6 +446,7 @@ export const newApiAuth = {
   fetchGroups: bridge.buildProvider<NewApiGroupsResult, NewApiSessionRequest>('new-api.fetch-groups'),
   provision: bridge.buildProvider<NewApiProvisionResult, NewApiProvisionRequest>('new-api.provision'),
   logout: bridge.buildProvider<void, NewApiSessionRequest>('new-api.logout'),
+  fetchBalance: bridge.buildProvider<NewApiBalanceResult, NewApiBalanceRequest>('new-api.fetch-balance'),
 };
 
 // ---------------------------------------------------------------------------

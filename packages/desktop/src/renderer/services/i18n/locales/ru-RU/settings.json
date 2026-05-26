@@ -226,6 +226,11 @@
     "switchAccount": "Сменить аккаунт",
     "noGroups": "У этого аккаунта нет доступных групп.",
     "provisionSuccess": "API-ключ создан для группы «{{group}}».",
+    "balanceLabel": "Баланс",
+    "balanceLoading": "Загрузка…",
+    "balanceError": "Ошибка запроса",
+    "balanceUnlimited": "Безлимит",
+    "balanceTooltip": "Нажмите для обновления",
     "errors": {
       "empty": "Укажите имя пользователя и пароль.",
       "invalid_credentials": "Неверное имя пользователя или пароль.",

@@ -98,3 +98,24 @@ export interface NewApiProvisionResult {
   /** Present when success=false */
   message?: string;
 }
+
+export interface NewApiBalanceRequest {
+  base_url: string;
+  api_key: string;
+}
+
+export type NewApiBalanceErrorCode = 'invalid_credentials' | 'network_error' | 'server_error' | 'unknown';
+
+export interface NewApiBalanceResult {
+  success: boolean;
+  /** Display amount (already converted to the configured unit by the server). */
+  amount?: number;
+  /** "$" / "¥" / "tokens" — derived from amount magnitude / response shape, not authoritative. */
+  unit?: string;
+  /** When non-zero, the token has an expiry; epoch seconds. */
+  expires_at?: number;
+  /** True when the upstream reports unlimited quota (very large hard limit). */
+  unlimited?: boolean;
+  code?: NewApiBalanceErrorCode;
+  message?: string;
+}

@@ -229,6 +229,11 @@
     "switchAccount": "Hesap değiştir",
     "noGroups": "Bu hesap için kullanılabilen grup yok.",
     "provisionSuccess": "\"{{group}}\" grubu için API anahtarı oluşturuldu.",
+    "balanceLabel": "Bakiye",
+    "balanceLoading": "Yükleniyor…",
+    "balanceError": "Sorgu başarısız",
+    "balanceUnlimited": "Sınırsız",
+    "balanceTooltip": "Bakiyeyi yenilemek için tıklayın",
     "errors": {
       "empty": "Kullanıcı adı ve parola gereklidir.",
       "invalid_credentials": "Kullanıcı adı veya parola yanlış.",

@@ -229,6 +229,11 @@
     "switchAccount": "切换账号",
     "noGroups": "当前账号没有可用分组。",
     "provisionSuccess": "已为分组「{{group}}」生成 API Key。",
+    "balanceLabel": "余额",
+    "balanceLoading": "加载中…",
+    "balanceError": "查询失败",
+    "balanceUnlimited": "无限",
+    "balanceTooltip": "点击刷新余额",
     "errors": {
       "empty": "请输入用户名和密码。",
       "invalid_credentials": "用户名或密码错误。",

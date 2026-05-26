@@ -6,6 +6,8 @@
 
 import { NEW_API_DEFAULT_BASE_URL } from '@/common/utils/platformConstants';
 import type {
+  NewApiBalanceRequest,
+  NewApiBalanceResult,
   NewApiGroup,
   NewApiGroupsResult,
   NewApiLoginRequest,
@@ -355,6 +357,79 @@ export async function logout(req: NewApiSessionRequest): Promise<void> {
   } catch {
     // Best-effort logout; the in-memory entry is already gone.
   }
+}
+
+/**
+ * Query a New API instance for the balance attached to a given API key.
+ * Backend handler: controller.GetSubscription. Endpoint accepts the regular
+ * `Authorization: Bearer sk-...` token; we just forward what the user has.
+ */
+export async function fetchBalance(req: NewApiBalanceRequest): Promise<NewApiBalanceResult> {
+  const baseUrl = (req.base_url ?? '').replace(/\/+$/, '');
+  if (!baseUrl) {
+    return { success: false, code: 'unknown', message: 'Missing base URL.' };
+  }
+  const apiKey = (req.api_key ?? '').trim();
+  if (!apiKey) {
+    return { success: false, code: 'invalid_credentials', message: 'Missing API key.' };
+  }
+  // The api_key field can hold multiple keys separated by newlines; the
+  // dashboard endpoint only accepts one, so use the first.
+  const firstKey = apiKey.split(/[\r\n]+/)[0]?.trim() ?? '';
+  if (!firstKey) {
+    return { success: false, code: 'invalid_credentials', message: 'Missing API key.' };
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/dashboard/billing/subscription`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: firstKey.startsWith('sk-') ? `Bearer ${firstKey}` : `Bearer sk-${firstKey}`,
+      },
+    });
+  } catch (error) {
+    return { success: false, code: 'network_error', message: (error as Error).message ?? 'Network error' };
+  }
+
+  if (response.status === 401) {
+    return { success: false, code: 'invalid_credentials', message: 'Unauthorized.' };
+  }
+  if (response.status >= 500) {
+    return { success: false, code: 'server_error', message: `Server error (${response.status}).` };
+  }
+
+  const body = await readJson(response);
+  if (!body || typeof body !== 'object') {
+    return { success: false, code: 'unknown', message: 'Unexpected response from server.' };
+  }
+  const envelope = body as {
+    error?: { message?: string; type?: string };
+    soft_limit_usd?: number;
+    hard_limit_usd?: number;
+    system_hard_limit_usd?: number;
+    access_until?: number;
+  };
+  if (envelope.error) {
+    return {
+      success: false,
+      code: 'invalid_credentials',
+      message: envelope.error.message ?? 'Failed to query balance.',
+    };
+  }
+  // The "*_USD" naming is a leftover from the OpenAI-compatible response
+  // shape; new-api may serve any quota display unit (USD/CNY/tokens).
+  // We expose the raw amount and let the renderer format it.
+  const amount = typeof envelope.hard_limit_usd === 'number' ? envelope.hard_limit_usd : 0;
+  // 100000000 is the sentinel for unlimited tokens (see controller/billing.go).
+  const unlimited = amount >= 99_999_999;
+  return {
+    success: true,
+    amount: unlimited ? undefined : amount,
+    expires_at: envelope.access_until,
+    unlimited,
+  };
 }
 
 // Test hook: clear sessions between vitest runs.

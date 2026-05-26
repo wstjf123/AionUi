@@ -229,6 +229,11 @@
     "switchAccount": "Switch account",
     "noGroups": "This account has no available groups.",
     "provisionSuccess": "API key generated for group \"{{group}}\".",
+    "balanceLabel": "Balance",
+    "balanceLoading": "Loading…",
+    "balanceError": "Query failed",
+    "balanceUnlimited": "Unlimited",
+    "balanceTooltip": "Click to refresh balance",
     "errors": {
       "empty": "Username and password are required.",
       "invalid_credentials": "Incorrect username or password.",

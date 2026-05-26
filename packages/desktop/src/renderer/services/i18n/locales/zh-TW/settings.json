@@ -229,6 +229,11 @@
     "switchAccount": "切換帳號",
     "noGroups": "目前帳號沒有可用分組。",
     "provisionSuccess": "已為分組「{{group}}」生成 API Key。",
+    "balanceLabel": "餘額",
+    "balanceLoading": "載入中…",
+    "balanceError": "查詢失敗",
+    "balanceUnlimited": "無限",
+    "balanceTooltip": "點擊刷新餘額",
     "errors": {
       "empty": "請輸入使用者名稱和密碼。",
       "invalid_credentials": "使用者名稱或密碼錯誤。",

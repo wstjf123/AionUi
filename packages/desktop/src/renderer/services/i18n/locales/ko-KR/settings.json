@@ -229,6 +229,11 @@
     "switchAccount": "계정 전환",
     "noGroups": "이 계정에는 사용 가능한 그룹이 없습니다.",
     "provisionSuccess": "「{{group}}」 그룹의 API 키가 생성되었습니다.",
+    "balanceLabel": "잔액",
+    "balanceLoading": "불러오는 중…",
+    "balanceError": "조회 실패",
+    "balanceUnlimited": "무제한",
+    "balanceTooltip": "클릭하여 잔액 새로고침",
     "errors": {
       "empty": "아이디와 비밀번호를 입력하세요.",
       "invalid_credentials": "아이디 또는 비밀번호가 올바르지 않습니다.",
