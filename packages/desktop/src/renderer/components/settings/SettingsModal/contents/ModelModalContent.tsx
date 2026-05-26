@@ -662,7 +662,28 @@ const ModelModalContent: React.FC = () => {
                       </div>
                     }
                   >
-                    {(platform.models ?? []).map((model: string, index: number, arr: string[]) => {
+                    {isNewApiPlatform(platform.platform) ? (
+                      /* New API 平台：显示分组切换入口，而非模型列表 */
+                      <div className='px-16px py-16px flex flex-col gap-12px'>
+                        <div className='text-13px text-t-secondary'>
+                          {t('settings.newApiLogin.currentGroup')}：
+                          <span className='text-t-primary font-medium ml-4px'>
+                            {platform.name.replace(/^New API · /, '') || '—'}
+                          </span>
+                        </div>
+                        <div className='text-12px text-t-tertiary'>
+                          {t('settings.newApiLogin.groupHint')}
+                        </div>
+                        <Button
+                          type='primary'
+                          size='small'
+                          onClick={() => setSwitchGroupTarget(platform)}
+                        >
+                          {t('settings.newApiLogin.switchGroup')}
+                        </Button>
+                      </div>
+                    ) : (
+                    (platform.models ?? []).map((model: string, index: number, arr: string[]) => {
                       const isNewApiProvider = isNewApiPlatform(platform.platform);
                       const modelProtocol = platform.model_protocols?.[model] || 'openai';
                       const model_health = platform.model_health?.[model];
@@ -781,7 +802,8 @@ const ModelModalContent: React.FC = () => {
                           {index < arr.length - 1 && <Divider className='!my-0 !border-[var(--color-border-2)]/70' />}
                         </div>
                       );
-                    })}
+                    })
+                    )}
                   </Collapse.Item>
                 </Collapse>
               );

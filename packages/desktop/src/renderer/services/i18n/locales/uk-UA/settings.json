@@ -256,6 +256,7 @@
     "useGroup": "Використати цю групу",
     "switchAccount": "Змінити обліковий запис",
     "switchGroup": "Switch group",
+    "currentGroup": "Current group",
     "noGroups": "У цього облікового запису немає доступних груп.",
     "provisionSuccess": "API-ключ створено для групи «{{group}}».",
     "balanceLabel": "Баланс",

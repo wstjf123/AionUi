@@ -258,6 +258,7 @@
     "useGroup": "이 그룹 사용",
     "switchAccount": "계정 전환",
     "switchGroup": "Switch group",
+    "currentGroup": "Current group",
     "noGroups": "이 계정에는 사용 가능한 그룹이 없습니다.",
     "provisionSuccess": "「{{group}}」 그룹의 API 키가 생성되었습니다.",
     "balanceLabel": "잔액",

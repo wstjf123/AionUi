@@ -258,6 +258,7 @@
     "useGroup": "Use this group",
     "switchAccount": "Switch account",
     "switchGroup": "Switch group",
+    "currentGroup": "Current group",
     "noGroups": "This account has no available groups.",
     "provisionSuccess": "API key generated for group \"{{group}}\".",
     "balanceLabel": "Balance",

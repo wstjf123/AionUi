@@ -225,6 +225,7 @@
     "useGroup": "Использовать эту группу",
     "switchAccount": "Сменить аккаунт",
     "switchGroup": "Switch group",
+    "currentGroup": "Current group",
     "noGroups": "У этого аккаунта нет доступных групп.",
     "provisionSuccess": "API-ключ создан для группы «{{group}}».",
     "balanceLabel": "Баланс",

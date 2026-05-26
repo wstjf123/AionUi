@@ -33,8 +33,6 @@ import AionrsModelSelector from '../platforms/aionrs/AionrsModelSelector';
 import { useAionrsModelSelection } from '../platforms/aionrs/useAionrsModelSelection';
 import { usePreviewContext } from '../Preview';
 import StarOfficeMonitorCard from '../platforms/openclaw/StarOfficeMonitorCard.tsx';
-import { useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
-import { isNewApiPlatform } from '@/common/utils/platformConstants';
 // import SkillRuleGenerator from './components/SkillRuleGenerator'; // Temporarily hidden
 
 /** Check whether a specific skill is mounted on the conversation. */
@@ -166,7 +164,7 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
     sider: <ChatSlider conversation={conversation} />,
     headerExtra: (
       <div className='flex items-center gap-8px'>
-        <NewApiBalance provider={modelSelection.current_model} />
+        <NewApiBalance />
         <CronJobManager
           conversation_id={conversation.id}
           cron_job_id={conversation.extra?.cron_job_id as string | undefined}
@@ -207,9 +205,6 @@ const ChatConversation: React.FC<{
   const workspaceEnabled = Boolean(conversation?.extra?.workspace);
 
   const isAionrsConversation = conversation?.type === 'aionrs';
-
-  const { data: providers } = useProvidersQuery();
-  const newApiProvider = useMemo(() => providers?.find((p) => isNewApiPlatform(p.platform)), [providers]);
 
   // 使用统一的 Hook 获取预设助手信息（ACP/Codex 会话）
   // Use unified hook for preset assistant info (ACP/Codex conversations)
@@ -371,7 +366,7 @@ const ChatConversation: React.FC<{
         </div>
       )}
       <div className='shrink-0'>
-        <NewApiBalance provider={newApiProvider} />
+        <NewApiBalance />
       </div>
       {conversation && (
         <div className='shrink-0'>

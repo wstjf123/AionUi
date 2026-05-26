@@ -258,6 +258,7 @@
     "useGroup": "使用此分組",
     "switchAccount": "切換帳號",
     "switchGroup": "Switch group",
+    "currentGroup": "Current group",
     "noGroups": "目前帳號沒有可用分組。",
     "provisionSuccess": "已為分組「{{group}}」生成 API Key。",
     "balanceLabel": "餘額",

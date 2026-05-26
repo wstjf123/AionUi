@@ -258,6 +258,7 @@
     "useGroup": "Bu grubu kullan",
     "switchAccount": "Hesap değiştir",
     "switchGroup": "Switch group",
+    "currentGroup": "Current group",
     "noGroups": "Bu hesap için kullanılabilen grup yok.",
     "provisionSuccess": "\"{{group}}\" grubu için API anahtarı oluşturuldu.",
     "balanceLabel": "Bakiye",

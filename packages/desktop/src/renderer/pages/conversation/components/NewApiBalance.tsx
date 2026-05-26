@@ -9,13 +9,11 @@ import { useTranslation } from 'react-i18next';
 import { Wallet, Refresh } from '@icon-park/react';
 import { Button, Tooltip } from '@arco-design/web-react';
 import { ipcBridge } from '@/common';
-import type { IProvider, TProviderWithModel } from '@/common/config/storage';
+import type { IProvider } from '@/common/config/storage';
 import type { NewApiBalanceResult } from '@/common/types/provider/newApi';
 import { isNewApiPlatform } from '@/common/utils/platformConstants';
-
-interface NewApiBalanceProps {
-  provider?: IProvider | TProviderWithModel;
-}
+import useSWR from 'swr';
+import { PROVIDERS_SWR_KEY, fetchProviders } from '@/renderer/hooks/agent/useModelProviderList';
 
 const formatAmount = (amount: number): string => {
   if (amount >= 100) return amount.toFixed(2);
@@ -23,13 +21,20 @@ const formatAmount = (amount: number): string => {
   return amount.toFixed(4);
 };
 
-const NewApiBalance: React.FC<NewApiBalanceProps> = ({ provider }) => {
+const NewApiBalance: React.FC = () => {
   const { t } = useTranslation();
   const [state, setState] = useState<NewApiBalanceResult | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const { data: providers } = useSWR<IProvider[]>(PROVIDERS_SWR_KEY, fetchProviders, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
+
+  const provider = providers?.find((p) => isNewApiPlatform(p.platform));
+
   const refresh = useCallback(async () => {
-    if (!provider || !isNewApiPlatform(provider.platform) || !provider.api_key || !provider.base_url) {
+    if (!provider || !provider.api_key || !provider.base_url) {
       setState(null);
       return;
     }
@@ -49,7 +54,7 @@ const NewApiBalance: React.FC<NewApiBalanceProps> = ({ provider }) => {
     void refresh();
   }, [refresh]);
 
-  if (!provider || !isNewApiPlatform(provider.platform)) {
+  if (!provider) {
     return null;
   }
 

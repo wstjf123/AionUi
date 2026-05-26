@@ -258,6 +258,7 @@
     "useGroup": "このグループを使用",
     "switchAccount": "アカウントを切り替え",
     "switchGroup": "Switch group",
+    "currentGroup": "Current group",
     "noGroups": "このアカウントに利用可能なグループはありません。",
     "provisionSuccess": "グループ「{{group}}」用の API キーを発行しました。",
     "balanceLabel": "残高",
