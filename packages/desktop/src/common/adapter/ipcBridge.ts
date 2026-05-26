@@ -34,6 +34,14 @@ import type {
 } from '../types/provider/providerApi';
 import type { SpeechToTextRequest, SpeechToTextResult } from '../types/provider/speech';
 import type {
+  NewApiGroupsResult,
+  NewApiLoginRequest,
+  NewApiLoginResult,
+  NewApiProvisionRequest,
+  NewApiProvisionResult,
+  NewApiSessionRequest,
+} from '../types/provider/newApi';
+import type {
   ITeamAgentRemovedEvent,
   ITeamAgentRenamedEvent,
   ITeamAgentSpawnedEvent,
@@ -425,6 +433,17 @@ export const dialog = {
     | { defaultPath?: string; properties?: OpenDialogOptions['properties']; filters?: OpenDialogOptions['filters'] }
     | undefined
   >('show-open'),
+};
+
+// ---------------------------------------------------------------------------
+// New API account login — stays IPC (cookie jar lives in main process)
+// ---------------------------------------------------------------------------
+
+export const newApiAuth = {
+  login: bridge.buildProvider<NewApiLoginResult, NewApiLoginRequest>('new-api.login'),
+  fetchGroups: bridge.buildProvider<NewApiGroupsResult, NewApiSessionRequest>('new-api.fetch-groups'),
+  provision: bridge.buildProvider<NewApiProvisionResult, NewApiProvisionRequest>('new-api.provision'),
+  logout: bridge.buildProvider<void, NewApiSessionRequest>('new-api.logout'),
 };
 
 // ---------------------------------------------------------------------------

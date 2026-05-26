@@ -11,6 +11,7 @@ import { initSystemSettingsBridge } from './systemSettingsBridge';
 import { initWindowControlsBridge } from './windowControlsBridge';
 import { initNotificationBridge } from './notificationBridge';
 import { initWebuiBridge } from './webuiBridge';
+import { initNewApiAuthBridge } from '../services/newApiAuth';
 
 export type BridgeDependencies = Record<string, never>;
 
@@ -22,6 +23,7 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
   initSystemSettingsBridge();
   initNotificationBridge();
   initWebuiBridge();
+  initNewApiAuthBridge();
 }
 
 export {

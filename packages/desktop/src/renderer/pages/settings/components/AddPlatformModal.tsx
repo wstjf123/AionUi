@@ -1,10 +1,12 @@
 import type { IProvider } from '@/common/config/storage';
 import type { ProtocolDetectionResponse, ProtocolType } from '@/common/utils/protocolDetector';
+import type { NewApiGroup } from '@/common/types/provider/newApi';
 import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
 import { isGoogleApisHost } from '@/common/utils/urlValidation';
+import { NEW_API_DEFAULT_BASE_URL } from '@/common/utils/platformConstants';
 import ModalHOC from '@/renderer/utils/ui/ModalHOC';
-import { Form, Input, Message, Select, Switch } from '@arco-design/web-react';
+import { Button, Form, Input, Message, Select, Switch, Tabs } from '@arco-design/web-react';
 import { LinkCloud, Edit, Search, Loading } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -187,6 +189,197 @@ const ProviderLogo: React.FC<{ logo: string | null; name: string; size?: number 
 };
 
 /**
+ * Account-login flow for the New API gateway. Logs into a fixed instance,
+ * lists the user's accessible groups, and provisions a per-group API key
+ * which is then handed back to the parent form.
+ */
+interface NewApiLoginPanelProps {
+  onProvisioned: (payload: { base_url: string; api_key: string; models: string[]; group: string }) => void;
+}
+
+const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) => {
+  const { t } = useTranslation();
+  const [message, messageContext] = Message.useMessage();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groups, setGroups] = useState<NewApiGroup[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
+  const [provisioning, setProvisioning] = useState(false);
+
+  const messageForCode = (
+    code: string,
+    fallback?: string
+  ): string => {
+    const key = `settings.newApiLogin.errors.${code}`;
+    const translated = t(key);
+    if (translated !== key) return translated;
+    return fallback ?? translated;
+  };
+
+  const loadGroups = async (sid: string) => {
+    setGroupsLoading(true);
+    try {
+      const res = await ipcBridge.newApiAuth.fetchGroups.invoke({ session_id: sid });
+      if (res.success) {
+        setGroups(res.groups);
+        if (res.groups.length === 0) {
+          message.warning(t('settings.newApiLogin.noGroups'));
+        } else {
+          setSelectedGroup(res.groups[0].name);
+        }
+      } else {
+        message.error(messageForCode(res.code, res.message));
+        if (res.code === 'session_expired') setSessionId(null);
+      }
+    } finally {
+      setGroupsLoading(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    const trimmedUsername = username.trim();
+    if (!trimmedUsername || !password) {
+      message.error(t('settings.newApiLogin.errors.empty'));
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      const res = await ipcBridge.newApiAuth.login.invoke({
+        username: trimmedUsername,
+        password,
+      });
+      if (res.success) {
+        setSessionId(res.session_id);
+        await loadGroups(res.session_id);
+      } else {
+        message.error(messageForCode(res.code, res.message));
+      }
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleProvision = async () => {
+    if (!sessionId || !selectedGroup) return;
+    setProvisioning(true);
+    try {
+      const res = await ipcBridge.newApiAuth.provision.invoke({
+        session_id: sessionId,
+        group: selectedGroup,
+      });
+      if (res.success) {
+        onProvisioned({
+          base_url: res.data.base_url,
+          api_key: res.data.api_key,
+          models: res.data.models,
+          group: res.data.group,
+        });
+        message.success(t('settings.newApiLogin.provisionSuccess', { group: selectedGroup }));
+      } else {
+        message.error(messageForCode(res.code, res.message));
+        if (res.code === 'session_expired') setSessionId(null);
+      }
+    } finally {
+      setProvisioning(false);
+    }
+  };
+
+  const handleSwitchAccount = () => {
+    if (sessionId) {
+      void ipcBridge.newApiAuth.logout.invoke({ session_id: sessionId });
+    }
+    setSessionId(null);
+    setGroups([]);
+    setSelectedGroup(undefined);
+    setPassword('');
+  };
+
+  return (
+    <div className='space-y-12px'>
+      {messageContext}
+      <div className='text-12px text-t-secondary'>
+        {t('settings.newApiLogin.endpointHint', { url: NEW_API_DEFAULT_BASE_URL })}
+      </div>
+
+      {!sessionId && (
+        <>
+          <Form.Item label={t('settings.newApiLogin.username')} layout='vertical'>
+            <Input
+              value={username}
+              onChange={setUsername}
+              placeholder={t('settings.newApiLogin.usernamePlaceholder')}
+              autoComplete='username'
+            />
+          </Form.Item>
+          <Form.Item label={t('settings.newApiLogin.password')} layout='vertical'>
+            <Input.Password
+              value={password}
+              onChange={setPassword}
+              placeholder={t('settings.newApiLogin.passwordPlaceholder')}
+              autoComplete='current-password'
+              onPressEnter={() => {
+                if (!loginLoading) void handleLogin();
+              }}
+            />
+          </Form.Item>
+          <Button type='primary' loading={loginLoading} onClick={handleLogin} long>
+            {t('settings.newApiLogin.login')}
+          </Button>
+        </>
+      )}
+
+      {sessionId && (
+        <>
+          <Form.Item
+            label={t('settings.newApiLogin.group')}
+            layout='vertical'
+            extra={
+              <span className='text-11px text-t-secondary'>{t('settings.newApiLogin.groupHint')}</span>
+            }
+          >
+            <Select
+              value={selectedGroup}
+              onChange={setSelectedGroup}
+              loading={groupsLoading}
+              placeholder={t('settings.newApiLogin.groupPlaceholder')}
+              disabled={groupsLoading || groups.length === 0}
+            >
+              {groups.map((g) => (
+                <Select.Option key={g.name} value={g.name}>
+                  <div className='flex items-center justify-between gap-12px'>
+                    <span className='font-medium'>{g.name}</span>
+                    <span className='text-11px text-t-secondary truncate'>
+                      {g.desc || '-'}
+                      {g.ratio ? ` · ${g.ratio}` : ''}
+                    </span>
+                  </div>
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <div className='flex gap-8px'>
+            <Button
+              type='primary'
+              loading={provisioning}
+              disabled={!selectedGroup}
+              onClick={handleProvision}
+            >
+              {t('settings.newApiLogin.useGroup')}
+            </Button>
+            <Button onClick={handleSwitchAccount} disabled={provisioning}>
+              {t('settings.newApiLogin.switchAccount')}
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+/**
  * 平台下拉选项渲染（第一层）
  * Platform dropdown option renderer (first level)
  *
@@ -237,6 +430,9 @@ const AddPlatformModal = ModalHOC<{
   // new-api 每模型协议选择状态 / new-api per-model protocol selection state
   const [modelProtocol, setModelProtocol] = useState<string>('openai');
   const [isFullUrl, setIsFullUrl] = useState(false);
+  // new-api 输入方式：手填 API Key 还是账号登录后选分组
+  // new-api credential entry mode: paste API key vs. login with account
+  const [newApiMode, setNewApiMode] = useState<'apiKey' | 'login'>('apiKey');
 
   // Auto-detect protocol when model changes (for new-api platforms)
   useEffect(() => {
@@ -308,6 +504,7 @@ const AddPlatformModal = ModalHOC<{
       setLastDetectionInput(null); // 重置检测记录 / Reset detection record
       setModelProtocol('openai'); // 重置协议选择 / Reset protocol selection
       setIsFullUrl(false);
+      setNewApiMode('apiKey');
 
       // Pre-fill from deep link data (aionui:// protocol)
       if (deepLinkData?.base_url || deepLinkData?.api_key) {
@@ -441,9 +638,47 @@ const AddPlatformModal = ModalHOC<{
             </Select>
           </Form.Item>
 
+          {/* New API 凭据来源：API Key vs 账号登录 / New API credential source */}
+          {isNewApi && (
+            <Tabs
+              activeTab={newApiMode}
+              onChange={(key) => setNewApiMode(key as 'apiKey' | 'login')}
+              type='line'
+              size='small'
+              className='mb-12px'
+            >
+              <Tabs.TabPane key='apiKey' title={t('settings.newApiLogin.tabApiKey')} />
+              <Tabs.TabPane key='login' title={t('settings.newApiLogin.tabLogin')} />
+            </Tabs>
+          )}
+
+          {isNewApi && newApiMode === 'login' && (
+            <NewApiLoginPanel
+              onProvisioned={({ base_url, api_key, models, group }) => {
+                form.setFieldValue('base_url', base_url);
+                form.setFieldValue('api_key', api_key);
+                if (models.length > 0) {
+                  form.setFieldValue('model', models[0]);
+                  setModelProtocol(detectNewApiProtocol(models[0]));
+                }
+                void modelListState.mutate({
+                  models: models.map((id) => ({ label: id, value: id })),
+                });
+                message.success(
+                  t('settings.newApiLogin.provisionSuccess', { group })
+                );
+                setNewApiMode('apiKey');
+              }}
+            />
+          )}
+
           {/* Base URL - 自定义选项、标准 Gemini 和 New API 显示 / Base URL - for Custom, standard Gemini and New API */}
           <Form.Item
-            hidden={isBedrock || (!isCustom && !isNewApi && platformValue !== 'gemini')}
+            hidden={
+              isBedrock ||
+              (!isCustom && !isNewApi && platformValue !== 'gemini') ||
+              (isNewApi && newApiMode === 'login')
+            }
             label={t('settings.apiEndpoint', 'API 请求地址')}
             field={'base_url'}
             required={isCustom || isNewApi}
@@ -469,7 +704,7 @@ const AddPlatformModal = ModalHOC<{
             A negative marginTop would overlap the Input's bottom edge and
             intercept clicks on its lower rim (see ELECTRON-1K4).
           */}
-          {(isCustom || isNewApi) && !isBedrock && (
+          {(isCustom || isNewApi) && !isBedrock && !(isNewApi && newApiMode === 'login') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 12 }}>
               <Switch size='small' checked={isFullUrl} onChange={setIsFullUrl} />
               <span className='text-12px text-t-secondary'>{t('settings.fullUrlMode', '完整 URL')}</span>
@@ -483,7 +718,7 @@ const AddPlatformModal = ModalHOC<{
 
           {/* API Key */}
           <Form.Item
-            hidden={isBedrock}
+            hidden={isBedrock || (isNewApi && newApiMode === 'login')}
             label={t('settings.apiKey')}
             required={!isBedrock}
             rules={[{ required: !isBedrock }]}
