@@ -209,8 +209,8 @@ const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) =>
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
   const [provisioning, setProvisioning] = useState(false);
 
-  const messageForCode = (code: string, fallback?: string): string => {
-    const key = `settings.newApiLogin.errors.${code}`;
+  const messageForCode = (code: string | undefined, fallback?: string): string => {
+    const key = `settings.newApiLogin.errors.${code ?? 'unknown'}`;
     const translated = t(key);
     if (translated !== key) return translated;
     return fallback ?? translated;
@@ -220,16 +220,17 @@ const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) =>
     setGroupsLoading(true);
     try {
       const res = await ipcBridge.newApiAuth.fetchGroups.invoke({ session_id: sid });
-      if (res.success) {
-        setGroups(res.groups);
-        if (res.groups.length === 0) {
-          message.warning(t('settings.newApiLogin.noGroups'));
-        } else {
-          setSelectedGroup(res.groups[0].name);
-        }
-      } else {
+      if (!res.success) {
         message.error(messageForCode(res.code, res.message));
         if (res.code === 'session_expired') setSessionId(null);
+        return;
+      }
+      const list = res.groups ?? [];
+      setGroups(list);
+      if (list.length === 0) {
+        message.warning(t('settings.newApiLogin.noGroups'));
+      } else {
+        setSelectedGroup(list[0].name);
       }
     } finally {
       setGroupsLoading(false);
@@ -248,12 +249,12 @@ const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) =>
         username: trimmedUsername,
         password,
       });
-      if (res.success) {
-        setSessionId(res.session_id);
-        await loadGroups(res.session_id);
-      } else {
+      if (!res.success || !res.session_id) {
         message.error(messageForCode(res.code, res.message));
+        return;
       }
+      setSessionId(res.session_id);
+      await loadGroups(res.session_id);
     } finally {
       setLoginLoading(false);
     }
@@ -267,18 +268,18 @@ const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) =>
         session_id: sessionId,
         group: selectedGroup,
       });
-      if (res.success) {
-        onProvisioned({
-          base_url: res.data.base_url,
-          api_key: res.data.api_key,
-          models: res.data.models,
-          group: res.data.group,
-        });
-        message.success(t('settings.newApiLogin.provisionSuccess', { group: selectedGroup }));
-      } else {
+      if (!res.success || !res.data) {
         message.error(messageForCode(res.code, res.message));
         if (res.code === 'session_expired') setSessionId(null);
+        return;
       }
+      onProvisioned({
+        base_url: res.data.base_url,
+        api_key: res.data.api_key,
+        models: res.data.models,
+        group: res.data.group,
+      });
+      message.success(t('settings.newApiLogin.provisionSuccess', { group: selectedGroup }));
     } finally {
       setProvisioning(false);
     }

@@ -34,17 +34,17 @@ export type NewApiLoginErrorCode =
   | 'server_error'
   | 'unknown';
 
-export type NewApiLoginResult =
-  | {
-      success: true;
-      session_id: string;
-      user: NewApiLoginUser;
-    }
-  | {
-      success: false;
-      code: NewApiLoginErrorCode;
-      message: string;
-    };
+export interface NewApiLoginResult {
+  success: boolean;
+  /** Present when success=true */
+  session_id?: string;
+  /** Present when success=true */
+  user?: NewApiLoginUser;
+  /** Present when success=false */
+  code?: NewApiLoginErrorCode;
+  /** Present when success=false */
+  message?: string;
+}
 
 export interface NewApiSessionRequest {
   session_id: string;
@@ -56,9 +56,17 @@ export interface NewApiGroup {
   ratio: string;
 }
 
-export type NewApiGroupsResult =
-  | { success: true; groups: NewApiGroup[] }
-  | { success: false; code: 'session_expired' | 'network_error' | 'server_error' | 'unknown'; message: string };
+export type NewApiGroupErrorCode = 'session_expired' | 'network_error' | 'server_error' | 'unknown';
+
+export interface NewApiGroupsResult {
+  success: boolean;
+  /** Present when success=true */
+  groups?: NewApiGroup[];
+  /** Present when success=false */
+  code?: NewApiGroupErrorCode;
+  /** Present when success=false */
+  message?: string;
+}
 
 export interface NewApiProvisionRequest extends NewApiSessionRequest {
   group: string;
@@ -72,17 +80,21 @@ export interface NewApiProvisionPayload {
   token_name: string;
 }
 
-export type NewApiProvisionResult =
-  | { success: true; data: NewApiProvisionPayload }
-  | {
-      success: false;
-      code:
-        | 'session_expired'
-        | 'token_create_failed'
-        | 'token_lookup_failed'
-        | 'models_failed'
-        | 'network_error'
-        | 'server_error'
-        | 'unknown';
-      message: string;
-    };
+export type NewApiProvisionErrorCode =
+  | 'session_expired'
+  | 'token_create_failed'
+  | 'token_lookup_failed'
+  | 'models_failed'
+  | 'network_error'
+  | 'server_error'
+  | 'unknown';
+
+export interface NewApiProvisionResult {
+  success: boolean;
+  /** Present when success=true */
+  data?: NewApiProvisionPayload;
+  /** Present when success=false */
+  code?: NewApiProvisionErrorCode;
+  /** Present when success=false */
+  message?: string;
+}
