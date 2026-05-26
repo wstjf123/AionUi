@@ -1506,6 +1506,7 @@ export type I18nKey =
   | 'settings.newApiLogin.passwordPlaceholder'
   | 'settings.newApiLogin.provisionSuccess'
   | 'settings.newApiLogin.switchAccount'
+  | 'settings.newApiLogin.switchGroup'
   | 'settings.newApiLogin.tabApiKey'
   | 'settings.newApiLogin.tabLogin'
   | 'settings.newApiLogin.useGroup'
