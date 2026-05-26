@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { ipcBridge } from '@/common';
 // M6: CSRF removed with legacy webserver — stub functions for compatibility, re-implement in M7
 const withCsrfToken = <T extends Record<string, unknown>>(data: T): T => data;
 const hasValidCsrfToken = (): boolean => true;
@@ -110,7 +111,22 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const refresh = useCallback(async () => {
     if (isDesktopRuntime) {
-      setStatus('authenticated');
+      // Desktop: gate access to the app on having at least one provider
+      // configured. The login page provisions one via the New API account
+      // flow; once that lands, refresh() is called and the user is let in.
+      setStatus('checking');
+      try {
+        const providers = await ipcBridge.mode.listProviders.invoke();
+        if (Array.isArray(providers) && providers.length > 0) {
+          setStatus('authenticated');
+          setUser(null);
+          setReady(true);
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to list providers:', error);
+      }
+      setStatus('unauthenticated');
       setUser(null);
       setReady(true);
       return;
@@ -142,7 +158,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const login = useCallback(async ({ username, password, remember }: LoginParams): Promise<LoginResult> => {
     try {
       if (isDesktopRuntime) {
-        setReady(true);
+        // Desktop login flow is handled by LoginPage directly via
+        // ipcBridge.newApiAuth + provider provisioning. Once a provider is
+        // created, callers should invoke refresh() to flip the gate.
         return { success: true };
       }
 
