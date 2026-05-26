@@ -193,11 +193,11 @@ const ProviderLogo: React.FC<{ logo: string | null; name: string; size?: number 
  * lists the user's accessible groups, and provisions a per-group API key
  * which is then handed back to the parent form.
  */
-interface NewApiLoginPanelProps {
+export interface NewApiLoginPanelProps {
   onProvisioned: (payload: { base_url: string; api_key: string; models: string[]; group: string }) => void;
 }
 
-const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) => {
+export const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) => {
   const { t } = useTranslation();
   const [message, messageContext] = Message.useMessage();
   const [username, setUsername] = useState('');

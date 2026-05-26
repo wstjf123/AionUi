@@ -33,6 +33,8 @@ import AionrsModelSelector from '../platforms/aionrs/AionrsModelSelector';
 import { useAionrsModelSelection } from '../platforms/aionrs/useAionrsModelSelection';
 import { usePreviewContext } from '../Preview';
 import StarOfficeMonitorCard from '../platforms/openclaw/StarOfficeMonitorCard.tsx';
+import { useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
+import { isNewApiPlatform } from '@/common/utils/platformConstants';
 // import SkillRuleGenerator from './components/SkillRuleGenerator'; // Temporarily hidden
 
 /** Check whether a specific skill is mounted on the conversation. */
@@ -206,6 +208,12 @@ const ChatConversation: React.FC<{
 
   const isAionrsConversation = conversation?.type === 'aionrs';
 
+  const { data: providers } = useProvidersQuery();
+  const newApiProvider = useMemo(
+    () => providers?.find((p) => isNewApiPlatform(p.platform)),
+    [providers]
+  );
+
   // 使用统一的 Hook 获取预设助手信息（ACP/Codex 会话）
   // Use unified hook for preset assistant info (ACP/Codex conversations)
   const acpConversation = isAionrsConversation ? undefined : conversation;
@@ -365,6 +373,9 @@ const ChatConversation: React.FC<{
           />
         </div>
       )}
+      <div className='shrink-0'>
+        <NewApiBalance provider={newApiProvider} />
+      </div>
       {conversation && (
         <div className='shrink-0'>
           <CronJobManager

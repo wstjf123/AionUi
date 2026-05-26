@@ -9,12 +9,12 @@ import { useTranslation } from 'react-i18next';
 import { Wallet, Refresh } from '@icon-park/react';
 import { Button, Tooltip } from '@arco-design/web-react';
 import { ipcBridge } from '@/common';
-import type { TProviderWithModel } from '@/common/config/storage';
+import type { IProvider, TProviderWithModel } from '@/common/config/storage';
 import type { NewApiBalanceResult } from '@/common/types/provider/newApi';
 import { isNewApiPlatform } from '@/common/utils/platformConstants';
 
 interface NewApiBalanceProps {
-  provider?: TProviderWithModel;
+  provider?: IProvider | TProviderWithModel;
 }
 
 const formatAmount = (amount: number): string => {

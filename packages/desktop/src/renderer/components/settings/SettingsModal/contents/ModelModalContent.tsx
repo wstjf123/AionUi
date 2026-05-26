@@ -8,13 +8,13 @@ import { ipcBridge } from '@/common';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
 import type { IProvider } from '@/common/config/storage';
 import { uuid } from '@/common/utils';
-import { Button, Divider, Message, Popconfirm, Collapse, Tag, Switch, Tooltip } from '@arco-design/web-react';
-import { DeleteFour, Info, Minus, Plus, Write, Heartbeat } from '@icon-park/react';
+import { Button, Divider, Message, Popconfirm, Collapse, Tag, Switch, Tooltip, Modal } from '@arco-design/web-react';
+import { DeleteFour, Info, Minus, Plus, Write, Heartbeat, SwitchButton } from '@icon-park/react';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AddModelModal from '@/renderer/pages/settings/components/AddModelModal';
-import AddPlatformModal from '@/renderer/pages/settings/components/AddPlatformModal';
-import { isNewApiPlatform, NEW_API_PROTOCOL_OPTIONS } from '@/renderer/utils/model/modelPlatforms';
+import AddPlatformModal, { NewApiLoginPanel } from '@/renderer/pages/settings/components/AddPlatformModal';
+import { isNewApiPlatform, NEW_API_PROTOCOL_OPTIONS, detectNewApiProtocol } from '@/renderer/utils/model/modelPlatforms';
 import EditModeModal from '@/renderer/pages/settings/components/EditModeModal';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import { useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
@@ -460,12 +460,43 @@ const ModelModalContent: React.FC = () => {
     },
   });
 
+  const [switchGroupTarget, setSwitchGroupTarget] = useState<IProvider | null>(null);
+
   return (
     <div className='flex flex-col bg-2 rd-16px px-16px md:px-24px lg:px-28px py-16px md:py-18px'>
       {messageContext}
       {addPlatformModalContext}
       {editModalContext}
       {addModelModalContext}
+      <Modal
+        title={t('settings.newApiLogin.switchGroup')}
+        visible={!!switchGroupTarget}
+        onCancel={() => setSwitchGroupTarget(null)}
+        footer={null}
+        unmountOnExit
+      >
+        {switchGroupTarget && (
+          <NewApiLoginPanel
+            onProvisioned={({ base_url, api_key, models, group }) => {
+              const modelProtocols: Record<string, string> = {};
+              for (const m of models) {
+                modelProtocols[m] = detectNewApiProtocol(m);
+              }
+              updatePlatform(
+                {
+                  ...switchGroupTarget,
+                  name: `New API · ${group}`,
+                  base_url,
+                  api_key,
+                  models,
+                  model_protocols: modelProtocols,
+                },
+                () => setSwitchGroupTarget(null)
+              );
+            }}
+          />
+        )}
+      </Modal>
 
       {/* Header with Add Button */}
       <div className='flex-shrink-0 border-b border-[var(--color-border-2)] pb-12px mb-14px flex flex-col gap-10px'>
@@ -588,12 +619,14 @@ const ModelModalContent: React.FC = () => {
                             onChange={() => toggleProviderEnabled(platform)}
                           />
                           <div className='flex items-center gap-4px'>
-                            <Button
-                              size='mini'
-                              className='model-provider-action-btn !w-28px !h-28px !min-w-28px text-t-secondary hover:text-t-primary'
-                              icon={<Plus size='14' />}
-                              onClick={() => addModelModalCtrl.open({ data: platform })}
-                            />
+                            {!isNewApiPlatform(platform.platform) && (
+                              <Button
+                                size='mini'
+                                className='model-provider-action-btn !w-28px !h-28px !min-w-28px text-t-secondary hover:text-t-primary'
+                                icon={<Plus size='14' />}
+                                onClick={() => addModelModalCtrl.open({ data: platform })}
+                              />
+                            )}
                             <Popconfirm
                               title={t('settings.deleteAllModelConfirm')}
                               onOk={() => removePlatform(platform.id)}
@@ -604,6 +637,16 @@ const ModelModalContent: React.FC = () => {
                                 icon={<Minus size='14' />}
                               />
                             </Popconfirm>
+                            {isNewApiPlatform(platform.platform) && (
+                              <Tooltip content={t('settings.newApiLogin.switchGroup')}>
+                                <Button
+                                  size='mini'
+                                  className='model-provider-action-btn !w-28px !h-28px !min-w-28px text-t-secondary hover:text-t-primary'
+                                  icon={<SwitchButton size='14' />}
+                                  onClick={() => setSwitchGroupTarget(platform)}
+                                />
+                              </Tooltip>
+                            )}
                             <Button
                               size='mini'
                               className='model-provider-action-btn !w-28px !h-28px !min-w-28px text-t-secondary hover:text-t-primary'
