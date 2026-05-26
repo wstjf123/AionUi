@@ -250,20 +250,26 @@ async function fetchTokenKey(session: SessionEntry, tokenId: number): Promise<st
   return typeof key === 'string' ? key : null;
 }
 
-async function fetchUserModels(session: SessionEntry): Promise<string[]> {
-  const response = await fetch(joinUrl('/api/user/models'), {
+async function fetchModelsByKey(baseUrl: string, key: string): Promise<string[]> {
+  // Use the OpenAI-compatible `/v1/models` endpoint so the list reflects what
+  // the freshly-provisioned token can actually call (group-filtered), instead
+  // of every model the user account can see across groups.
+  const url = `${baseUrl.replace(/\/+$/, '')}/v1/models`;
+  const response = await fetch(url, {
     method: 'GET',
-    headers: { ...HEADERS_FOR_API, Cookie: session.cookie, 'New-Api-User': String(session.userId) },
+    headers: {
+      Accept: 'application/json',
+      Authorization: key.startsWith('sk-') ? `Bearer ${key}` : `Bearer sk-${key}`,
+    },
   });
   if (!response.ok) return [];
   const body = await readJson(response);
   if (!body || typeof body !== 'object') return [];
-  const envelope = body as { success?: boolean; data?: unknown };
-  if (!envelope.success) return [];
-  if (Array.isArray(envelope.data)) {
-    return envelope.data.filter((x): x is string => typeof x === 'string');
-  }
-  return [];
+  const data = (body as { data?: unknown }).data;
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((item) => (item && typeof item === 'object' ? (item as { id?: unknown }).id : null))
+    .filter((id): id is string => typeof id === 'string' && id.length > 0);
 }
 
 export async function provision(req: NewApiProvisionRequest): Promise<NewApiProvisionResult> {
@@ -328,7 +334,7 @@ export async function provision(req: NewApiProvisionRequest): Promise<NewApiProv
 
   let models: string[] = [];
   try {
-    models = await fetchUserModels(session);
+    models = await fetchModelsByKey(NEW_API_DEFAULT_BASE_URL, key);
   } catch {
     return { success: false, code: 'models_failed', message: 'Failed to load models for the user.' };
   }

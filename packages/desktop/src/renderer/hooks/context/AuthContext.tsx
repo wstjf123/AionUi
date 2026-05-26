@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ipcBridge } from '@/common';
+import { refreshNewApiProviderModels } from '@/renderer/services/refreshNewApiProviderModels';
 // M6: CSRF removed with legacy webserver — stub functions for compatibility, re-implement in M7
 const withCsrfToken = <T extends Record<string, unknown>>(data: T): T => data;
 const hasValidCsrfToken = (): boolean => true;
@@ -121,6 +122,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
           setStatus('authenticated');
           setUser(null);
           setReady(true);
+          refreshNewApiProviderModels(providers);
           return;
         }
       } catch (error) {

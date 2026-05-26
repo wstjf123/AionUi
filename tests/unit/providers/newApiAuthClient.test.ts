@@ -217,8 +217,11 @@ describe('newApiAuth.client', () => {
         if (u.endsWith('/api/token/99/key') && init?.method === 'POST') {
           return jsonResponse(200, { success: true, data: { key: 'sk-LIVE' } });
         }
-        if (u.endsWith('/api/user/models')) {
-          return jsonResponse(200, { success: true, data: ['gpt-4o-mini', 'claude-3-5-sonnet'] });
+        if (u.endsWith('/v1/models')) {
+          return jsonResponse(200, {
+            object: 'list',
+            data: [{ id: 'gpt-4o-mini' }, { id: 'claude-3-5-sonnet' }],
+          });
         }
         throw new Error(`unexpected fetch: ${u}`);
       });
