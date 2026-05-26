@@ -7,6 +7,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Wallet, Refresh } from '@icon-park/react';
+import { Button, Tooltip } from '@arco-design/web-react';
 import { ipcBridge } from '@/common';
 import type { TProviderWithModel } from '@/common/config/storage';
 import type { NewApiBalanceResult } from '@/common/types/provider/newApi';
@@ -68,19 +69,26 @@ const NewApiBalance: React.FC<NewApiBalanceProps> = ({ provider }) => {
   }
 
   return (
-    <button
-      type='button'
-      className='flex items-center gap-4px px-8px h-28px rounded-6px border border-line-2 bg-fill-2 text-12px text-t-secondary hover:text-t-primary hover:bg-fill-3 transition-colors disabled:opacity-60'
-      onClick={() => {
-        void refresh();
-      }}
-      disabled={loading}
-      title={t('settings.newApiLogin.balanceTooltip')}
-    >
-      {loading ? <Refresh theme='outline' size={14} className='animate-spin' /> : <Wallet theme='outline' size={14} />}
-      <span className='font-medium'>{t('settings.newApiLogin.balanceLabel')}</span>
-      <span>{label}</span>
-    </button>
+    <Tooltip content={t('settings.newApiLogin.balanceTooltip')}>
+      <Button
+        size='small'
+        type='outline'
+        onClick={() => {
+          void refresh();
+        }}
+        disabled={loading}
+        icon={
+          loading ? (
+            <Refresh theme='outline' size={14} className='animate-spin' />
+          ) : (
+            <Wallet theme='outline' size={14} />
+          )
+        }
+      >
+        <span className='font-medium mr-4px'>{t('settings.newApiLogin.balanceLabel')}</span>
+        <span>{label}</span>
+      </Button>
+    </Tooltip>
   );
 };
 
