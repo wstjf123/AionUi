@@ -6,6 +6,7 @@
 
 import { NEW_API_DEFAULT_BASE_URL } from '@/common/utils/platformConstants';
 import type {
+  NewApiAccount,
   NewApiBalanceRequest,
   NewApiBalanceResult,
   NewApiGroup,
@@ -14,12 +15,19 @@ import type {
   NewApiLoginResult,
   NewApiProvisionRequest,
   NewApiProvisionResult,
+  NewApiSelfProfile,
+  NewApiSelfRequest,
+  NewApiSelfResult,
   NewApiSessionRequest,
+  NewApiUpdatePasswordRequest,
+  NewApiUpdatePasswordResult,
 } from '@/common/types/provider/newApi';
 
 interface SessionEntry {
   cookie: string;
   userId: number;
+  username: string;
+  displayName?: string;
   expiresAt: number;
 }
 
@@ -147,10 +155,14 @@ export async function login(req: NewApiLoginRequest): Promise<NewApiLoginResult>
 
   const data = envelope.data;
   const userId = Number(data.id);
+  const resolvedUsername = String(data.username ?? username);
+  const displayName = typeof data.display_name === 'string' ? data.display_name : undefined;
   const sessionId = makeSessionId();
   sessions.set(sessionId, {
     cookie,
     userId,
+    username: resolvedUsername,
+    displayName,
     expiresAt: Date.now() + SESSION_TTL_MS,
   });
 
@@ -159,8 +171,8 @@ export async function login(req: NewApiLoginRequest): Promise<NewApiLoginResult>
     session_id: sessionId,
     user: {
       id: userId,
-      username: String(data.username ?? username),
-      display_name: typeof data.display_name === 'string' ? data.display_name : undefined,
+      username: resolvedUsername,
+      display_name: displayName,
       role: typeof data.role === 'number' ? data.role : undefined,
     },
   };
@@ -248,6 +260,32 @@ async function fetchTokenKey(session: SessionEntry, tokenId: number): Promise<st
   if (!envelope.success) return null;
   const key = envelope.data?.key;
   return typeof key === 'string' ? key : null;
+}
+
+/**
+ * Fetch (or regenerate) the personal access_token for the logged-in user.
+ *
+ * ⚠️ `GET /api/user/token` REPLACES any previous access_token the user had
+ * issued — there is no "read current" endpoint server-side. If the same user
+ * has a token in use elsewhere (CLI, another device), our login invalidates
+ * it. That's a known compromise of this flow; users are warned implicitly by
+ * needing to re-login on any other client they had connected.
+ */
+async function fetchAccessToken(session: SessionEntry): Promise<string | null> {
+  try {
+    const response = await fetch(joinUrl('/api/user/token'), {
+      method: 'GET',
+      headers: { ...HEADERS_FOR_API, Cookie: session.cookie, 'New-Api-User': String(session.userId) },
+    });
+    if (!response.ok) return null;
+    const body = await readJson(response);
+    if (!body || typeof body !== 'object') return null;
+    const envelope = body as { success?: boolean; data?: unknown };
+    if (!envelope.success) return null;
+    return typeof envelope.data === 'string' && envelope.data.length > 0 ? envelope.data : null;
+  } catch {
+    return null;
+  }
 }
 
 async function fetchModelsByKey(baseUrl: string, key: string): Promise<string[]> {
@@ -339,6 +377,19 @@ export async function provision(req: NewApiProvisionRequest): Promise<NewApiProv
     return { success: false, code: 'models_failed', message: 'Failed to load models for the user.' };
   }
 
+  // Best-effort: pull an access_token so the Account settings page can call
+  // `/api/user/self` later without re-prompting for the password. Login still
+  // succeeds even if this step fails — Account management just won't be wired.
+  const accessToken = await fetchAccessToken(session);
+  const account: NewApiAccount | undefined = accessToken
+    ? {
+        user_id: session.userId,
+        username: session.username,
+        display_name: session.displayName,
+        access_token: accessToken,
+      }
+    : undefined;
+
   return {
     success: true,
     data: {
@@ -347,6 +398,7 @@ export async function provision(req: NewApiProvisionRequest): Promise<NewApiProv
       models,
       group,
       token_name: tokenName,
+      account,
     },
   };
 }
@@ -436,6 +488,121 @@ export async function fetchBalance(req: NewApiBalanceRequest): Promise<NewApiBal
     expires_at: envelope.access_until,
     unlimited,
   };
+}
+
+function selfHeaders(accessToken: string): Record<string, string> {
+  // new-api's middleware.UserAuth accepts the raw access_token in the
+  // Authorization header (no "Bearer " prefix). Sending Bearer would make it
+  // look like a relay sk-... key instead.
+  return { ...HEADERS_FOR_API, Authorization: accessToken };
+}
+
+/**
+ * Fetch the current user's profile using the persisted access_token.
+ * Backed by `/api/user/self` — auth is via Authorization header, no cookie.
+ */
+export async function getSelf(req: NewApiSelfRequest): Promise<NewApiSelfResult> {
+  const baseUrl = (req.base_url ?? '').replace(/\/+$/, '');
+  const accessToken = (req.access_token ?? '').trim();
+  if (!baseUrl || !accessToken) {
+    return { success: false, code: 'session_expired', message: 'Missing credentials.' };
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/api/user/self`, {
+      method: 'GET',
+      headers: selfHeaders(accessToken),
+    });
+  } catch (error) {
+    return { success: false, code: 'network_error', message: (error as Error).message ?? 'Network error' };
+  }
+
+  if (response.status === 401) {
+    return { success: false, code: 'session_expired', message: 'Session expired. Please sign in again.' };
+  }
+  if (response.status >= 500) {
+    return { success: false, code: 'server_error', message: `Server error (${response.status}).` };
+  }
+
+  const body = await readJson(response);
+  if (!body || typeof body !== 'object') {
+    return { success: false, code: 'unknown', message: 'Unexpected response from server.' };
+  }
+  const envelope = body as { success?: boolean; data?: Record<string, unknown>; message?: string };
+  if (!envelope.success || !envelope.data) {
+    return { success: false, code: 'unknown', message: pickMessage(body, 'Failed to load profile.') };
+  }
+
+  const data = envelope.data;
+  const user: NewApiSelfProfile = {
+    id: typeof data.id === 'number' ? data.id : Number(data.id ?? 0),
+    username: typeof data.username === 'string' ? data.username : '',
+    display_name: typeof data.display_name === 'string' ? data.display_name : undefined,
+    email: typeof data.email === 'string' ? data.email : undefined,
+    role: typeof data.role === 'number' ? data.role : undefined,
+    group: typeof data.group === 'string' ? data.group : '',
+    quota: typeof data.quota === 'number' ? data.quota : 0,
+    used_quota: typeof data.used_quota === 'number' ? data.used_quota : 0,
+    request_count: typeof data.request_count === 'number' ? data.request_count : 0,
+  };
+  return { success: true, user };
+}
+
+/**
+ * Change the password of the logged-in user via `PUT /api/user/self`.
+ * Server requires `username`, `display_name`, `original_password`, `password`
+ * — the handler hashes & persists when original_password matches.
+ */
+export async function updatePassword(req: NewApiUpdatePasswordRequest): Promise<NewApiUpdatePasswordResult> {
+  const baseUrl = (req.base_url ?? '').replace(/\/+$/, '');
+  const accessToken = (req.access_token ?? '').trim();
+  if (!baseUrl || !accessToken) {
+    return { success: false, code: 'session_expired', message: 'Missing credentials.' };
+  }
+  const newPassword = req.new_password ?? '';
+  const originalPassword = req.original_password ?? '';
+  if (!newPassword || !originalPassword) {
+    return { success: false, code: 'invalid_credentials', message: 'Both passwords are required.' };
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/api/user/self`, {
+      method: 'PUT',
+      headers: selfHeaders(accessToken),
+      body: JSON.stringify({
+        username: req.username,
+        display_name: req.display_name ?? '',
+        original_password: originalPassword,
+        password: newPassword,
+      }),
+    });
+  } catch (error) {
+    return { success: false, code: 'network_error', message: (error as Error).message ?? 'Network error' };
+  }
+
+  if (response.status === 401) {
+    return { success: false, code: 'session_expired', message: 'Session expired. Please sign in again.' };
+  }
+  if (response.status >= 500) {
+    return { success: false, code: 'server_error', message: `Server error (${response.status}).` };
+  }
+
+  const body = await readJson(response);
+  if (!body || typeof body !== 'object') {
+    return { success: false, code: 'unknown', message: 'Unexpected response from server.' };
+  }
+  const envelope = body as { success?: boolean; message?: string };
+  if (!envelope.success) {
+    const message = pickMessage(body, 'Failed to update password.');
+    // The server returns "原密码错误" on a current-password mismatch.
+    if (/原密码|original.*password|incorrect/i.test(message)) {
+      return { success: false, code: 'invalid_credentials', message };
+    }
+    return { success: false, code: 'unknown', message };
+  }
+  return { success: true };
 }
 
 // Test hook: clear sessions between vitest runs.

@@ -15,6 +15,7 @@ import {
   Robot,
   Speed,
   System,
+  User,
 } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
@@ -25,6 +26,7 @@ import { getSiderTooltipProps } from '@/renderer/utils/ui/siderTooltip';
 
 /** Builtin settings tab IDs in display order (must match router paths). */
 export const BUILTIN_TAB_IDS = [
+  'account',
   'agent',
   'model',
   'assistants',
@@ -52,6 +54,7 @@ export const LEGACY_ANCHOR_REMAP: Record<string, string> = {
  * Extension tabs anchored between these builtins inherit the enclosing group visually.
  */
 const GROUP_HEADER_BEFORE: Record<string, string> = {
+  account: 'settings.groupAccount',
   agent: 'settings.groupAiCore',
   display: 'settings.groupApp',
   about: 'settings.groupAbout',
@@ -81,6 +84,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   const { menus, groupHeaderAt } = useMemo(() => {
     // Build builtin items
     const builtinMap: Record<string, SiderItem> = {
+      account: { id: 'account', label: t('settings.account.title'), icon: <User />, path: 'account' },
       model: { id: 'model', label: t('settings.model'), icon: <LinkCloud />, path: 'model' },
       assistants: {
         id: 'assistants',

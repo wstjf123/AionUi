@@ -166,6 +166,36 @@
   "groupAiCore": "AI 核心",
   "groupApp": "应用",
   "groupAbout": "其他",
+  "groupAccount": "账户",
+  "account": {
+    "title": "账户",
+    "username": "用户名",
+    "displayName": "显示名",
+    "group": "分组",
+    "balance": "余额",
+    "quota": "配额",
+    "usedQuota": "已用 / 总额",
+    "changePassword": "修改密码",
+    "logout": "退出登录",
+    "logoutConfirmTitle": "确认退出 New API 账号？",
+    "logoutConfirmBody": "退出后将删除本机保存的 API Key。任何时候都可以重新登录。",
+    "needRelogin": "请重新登录以启用账户管理功能。",
+    "password": {
+      "title": "修改密码",
+      "current": "当前密码",
+      "new": "新密码",
+      "confirm": "确认新密码",
+      "mismatch": "两次输入的新密码不一致。",
+      "successHint": "密码已更新，请重新登录。"
+    },
+    "errors": {
+      "session_expired": "会话已过期，请重新登录。",
+      "invalid_credentials": "当前密码不正确。",
+      "network_error": "网络错误，请重试。",
+      "server_error": "服务器错误，请重试。",
+      "unknown": "操作失败，请重试。"
+    }
+  },
   "agentIdleTimeout": "Agent 空闲超时（分钟）",
   "agentIdleTimeoutDesc": "空闲超过该时长后自动终止 Agent 进程以释放内存",
   "gemini": "Gemini CLI",

@@ -166,6 +166,36 @@
   "groupAiCore": "AI 코어",
   "groupApp": "애플리케이션",
   "groupAbout": "기타",
+  "groupAccount": "계정",
+  "account": {
+    "title": "계정",
+    "username": "사용자 이름",
+    "displayName": "표시 이름",
+    "group": "그룹",
+    "balance": "잔액",
+    "quota": "쿼터",
+    "usedQuota": "사용 / 전체",
+    "changePassword": "비밀번호 변경",
+    "logout": "로그아웃",
+    "logoutConfirmTitle": "New API 계정에서 로그아웃하시겠습니까?",
+    "logoutConfirmBody": "이 기기에 저장된 API 키가 삭제됩니다. 언제든지 다시 로그인할 수 있습니다.",
+    "needRelogin": "계정 관리를 사용하려면 다시 로그인하세요.",
+    "password": {
+      "title": "비밀번호 변경",
+      "current": "현재 비밀번호",
+      "new": "새 비밀번호",
+      "confirm": "새 비밀번호 확인",
+      "mismatch": "새 비밀번호가 일치하지 않습니다.",
+      "successHint": "비밀번호가 업데이트되었습니다. 다시 로그인하세요."
+    },
+    "errors": {
+      "session_expired": "세션이 만료되었습니다. 다시 로그인하세요.",
+      "invalid_credentials": "현재 비밀번호가 올바르지 않습니다.",
+      "network_error": "네트워크 오류. 다시 시도해 주세요.",
+      "server_error": "서버 오류. 다시 시도해 주세요.",
+      "unknown": "실패. 다시 시도해 주세요."
+    }
+  },
   "agentIdleTimeout": "Agent 유휴 시간 초과 (분)",
   "agentIdleTimeoutDesc": "유휴 시간 초과 후 메모리 확보를 위해 Agent 프로세스를 종료합니다",
   "gemini": "Gemini",

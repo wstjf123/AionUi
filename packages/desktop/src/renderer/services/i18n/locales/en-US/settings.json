@@ -166,6 +166,36 @@
   "groupAiCore": "AI Core",
   "groupApp": "Application",
   "groupAbout": "Other",
+  "groupAccount": "Account",
+  "account": {
+    "title": "Account",
+    "username": "Username",
+    "displayName": "Display Name",
+    "group": "Group",
+    "balance": "Balance",
+    "quota": "Quota",
+    "usedQuota": "Used / Total",
+    "changePassword": "Change Password",
+    "logout": "Log Out",
+    "logoutConfirmTitle": "Log out of New API?",
+    "logoutConfirmBody": "This removes the saved API key on this device. You can sign in again at any time.",
+    "needRelogin": "Please sign in again to enable account management.",
+    "password": {
+      "title": "Change Password",
+      "current": "Current Password",
+      "new": "New Password",
+      "confirm": "Confirm New Password",
+      "mismatch": "New passwords do not match.",
+      "successHint": "Password updated. Please sign in again."
+    },
+    "errors": {
+      "session_expired": "Session expired, please sign in again.",
+      "invalid_credentials": "Current password is incorrect.",
+      "network_error": "Network error. Please try again.",
+      "server_error": "Server error. Please try again.",
+      "unknown": "Failed. Please try again."
+    }
+  },
   "agentIdleTimeout": "Agent Idle Timeout (min)",
   "agentIdleTimeoutDesc": "Kill idle agent processes after this duration to free memory",
   "gemini": "Gemini CLI",

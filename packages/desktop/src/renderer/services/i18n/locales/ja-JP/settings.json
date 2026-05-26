@@ -166,6 +166,36 @@
   "groupAiCore": "AI コア",
   "groupApp": "アプリケーション",
   "groupAbout": "その他",
+  "groupAccount": "アカウント",
+  "account": {
+    "title": "アカウント",
+    "username": "ユーザー名",
+    "displayName": "表示名",
+    "group": "グループ",
+    "balance": "残高",
+    "quota": "クォータ",
+    "usedQuota": "使用済み / 合計",
+    "changePassword": "パスワード変更",
+    "logout": "ログアウト",
+    "logoutConfirmTitle": "New API からログアウトしますか？",
+    "logoutConfirmBody": "この端末に保存された API キーを削除します。いつでも再ログインできます。",
+    "needRelogin": "アカウント管理を有効にするには再ログインしてください。",
+    "password": {
+      "title": "パスワード変更",
+      "current": "現在のパスワード",
+      "new": "新しいパスワード",
+      "confirm": "新しいパスワードの確認",
+      "mismatch": "新しいパスワードが一致しません。",
+      "successHint": "パスワードを更新しました。再ログインしてください。"
+    },
+    "errors": {
+      "session_expired": "セッションが期限切れです。再ログインしてください。",
+      "invalid_credentials": "現在のパスワードが正しくありません。",
+      "network_error": "ネットワークエラー。もう一度お試しください。",
+      "server_error": "サーバーエラー。もう一度お試しください。",
+      "unknown": "失敗しました。もう一度お試しください。"
+    }
+  },
   "agentIdleTimeout": "Agent アイドルタイムアウト（分）",
   "agentIdleTimeoutDesc": "この時間アイドル状態が続くとメモリ解放のためAgentプロセスを終了します",
   "gemini": "Gemini",

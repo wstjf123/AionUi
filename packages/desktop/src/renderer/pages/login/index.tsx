@@ -14,6 +14,7 @@ import { useAuth } from '../../hooks/context/AuthContext';
 import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
 import { detectNewApiProtocol } from '@/renderer/utils/model/modelPlatforms';
+import { saveProviderAccount } from '@/renderer/services/newApiAccountStore';
 import { NEW_API_DEFAULT_BASE_URL, NEW_API_PLATFORM_ID } from '@/common/utils/platformConstants';
 import type { NewApiGroup } from '@/common/types/provider/newApi';
 import { Button, Checkbox, Form, Input, Message, Select } from '@arco-design/web-react';
@@ -172,9 +173,10 @@ const LoginPage: React.FC = () => {
         modelProtocols[m] = detectNewApiProtocol(m);
       }
 
+      const providerId = uuid();
       try {
         await ipcBridge.mode.createProvider.invoke({
-          id: uuid(),
+          id: providerId,
           platform: NEW_API_PLATFORM_ID,
           name: `New API · ${data.group}`,
           base_url: data.base_url,
@@ -187,6 +189,11 @@ const LoginPage: React.FC = () => {
         console.error('Failed to create provider:', error);
         message.error(t('settings.newApiLogin.errors.unknown'));
         return;
+      }
+
+      // Stash account info locally — the providers API doesn't persist it.
+      if (data.account) {
+        saveProviderAccount(providerId, data.account);
       }
 
       void ipcBridge.newApiAuth.logout.invoke({ session_id: sessionId });

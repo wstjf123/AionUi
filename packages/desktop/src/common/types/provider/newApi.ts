@@ -72,12 +72,28 @@ export interface NewApiProvisionRequest extends NewApiSessionRequest {
   group: string;
 }
 
+/**
+ * Account info attached to a new-api provider. Lets the renderer reach
+ * `/api/user/self` and `PUT /api/user/self` without prompting for the password
+ * again. The access_token is generated via `GET /api/user/token`, which
+ * *overwrites* any prior token the user might have issued elsewhere — that's a
+ * known compromise of this login flow.
+ */
+export interface NewApiAccount {
+  user_id: number;
+  username: string;
+  display_name?: string;
+  access_token: string;
+}
+
 export interface NewApiProvisionPayload {
   base_url: string;
   api_key: string;
   models: string[];
   group: string;
   token_name: string;
+  /** Optional — present when `/api/user/token` succeeded after token provisioning. */
+  account?: NewApiAccount;
 }
 
 export type NewApiProvisionErrorCode =
@@ -117,5 +133,61 @@ export interface NewApiBalanceResult {
   /** True when the upstream reports unlimited quota (very large hard limit). */
   unlimited?: boolean;
   code?: NewApiBalanceErrorCode;
+  message?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Account management — backed by `Authorization: <access_token>` against the
+// new-api server. Lets Account settings work without a live cookie session.
+// ---------------------------------------------------------------------------
+
+export interface NewApiSelfRequest {
+  base_url: string;
+  access_token: string;
+}
+
+export interface NewApiSelfProfile {
+  id: number;
+  username: string;
+  display_name?: string;
+  email?: string;
+  role?: number;
+  group: string;
+  quota: number;
+  used_quota: number;
+  request_count: number;
+}
+
+export type NewApiSelfErrorCode = 'session_expired' | 'network_error' | 'server_error' | 'unknown';
+
+export interface NewApiSelfResult {
+  success: boolean;
+  /** Present when success=true */
+  user?: NewApiSelfProfile;
+  /** Present when success=false */
+  code?: NewApiSelfErrorCode;
+  /** Present when success=false */
+  message?: string;
+}
+
+export interface NewApiUpdatePasswordRequest {
+  base_url: string;
+  access_token: string;
+  username: string;
+  display_name?: string;
+  original_password: string;
+  new_password: string;
+}
+
+export type NewApiUpdatePasswordErrorCode =
+  | 'session_expired'
+  | 'invalid_credentials'
+  | 'network_error'
+  | 'server_error'
+  | 'unknown';
+
+export interface NewApiUpdatePasswordResult {
+  success: boolean;
+  code?: NewApiUpdatePasswordErrorCode;
   message?: string;
 }

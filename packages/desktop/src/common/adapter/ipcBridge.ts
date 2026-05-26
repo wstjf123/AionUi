@@ -41,7 +41,11 @@ import type {
   NewApiLoginResult,
   NewApiProvisionRequest,
   NewApiProvisionResult,
+  NewApiSelfRequest,
+  NewApiSelfResult,
   NewApiSessionRequest,
+  NewApiUpdatePasswordRequest,
+  NewApiUpdatePasswordResult,
 } from '../types/provider/newApi';
 import type {
   ITeamAgentRemovedEvent,
@@ -447,6 +451,10 @@ export const newApiAuth = {
   provision: bridge.buildProvider<NewApiProvisionResult, NewApiProvisionRequest>('new-api.provision'),
   logout: bridge.buildProvider<void, NewApiSessionRequest>('new-api.logout'),
   fetchBalance: bridge.buildProvider<NewApiBalanceResult, NewApiBalanceRequest>('new-api.fetch-balance'),
+  getSelf: bridge.buildProvider<NewApiSelfResult, NewApiSelfRequest>('new-api.get-self'),
+  updatePassword: bridge.buildProvider<NewApiUpdatePasswordResult, NewApiUpdatePasswordRequest>(
+    'new-api.update-password'
+  ),
 };
 
 // ---------------------------------------------------------------------------

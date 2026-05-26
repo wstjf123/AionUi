@@ -166,6 +166,36 @@
   "groupAiCore": "AI Çekirdek",
   "groupApp": "Uygulama",
   "groupAbout": "Diğer",
+  "groupAccount": "Hesap",
+  "account": {
+    "title": "Hesap",
+    "username": "Kullanıcı Adı",
+    "displayName": "Görünen Ad",
+    "group": "Grup",
+    "balance": "Bakiye",
+    "quota": "Kota",
+    "usedQuota": "Kullanılan / Toplam",
+    "changePassword": "Parolayı Değiştir",
+    "logout": "Çıkış Yap",
+    "logoutConfirmTitle": "New API hesabından çıkış yapılsın mı?",
+    "logoutConfirmBody": "Bu cihazda kayıtlı API anahtarı silinecek. İstediğiniz zaman tekrar giriş yapabilirsiniz.",
+    "needRelogin": "Hesap yönetimini etkinleştirmek için lütfen tekrar giriş yapın.",
+    "password": {
+      "title": "Parolayı Değiştir",
+      "current": "Mevcut Parola",
+      "new": "Yeni Parola",
+      "confirm": "Yeni Parolayı Onayla",
+      "mismatch": "Yeni parolalar eşleşmiyor.",
+      "successHint": "Parola güncellendi. Lütfen tekrar giriş yapın."
+    },
+    "errors": {
+      "session_expired": "Oturum süresi doldu, lütfen tekrar giriş yapın.",
+      "invalid_credentials": "Mevcut parola yanlış.",
+      "network_error": "Ağ hatası. Lütfen tekrar deneyin.",
+      "server_error": "Sunucu hatası. Lütfen tekrar deneyin.",
+      "unknown": "Başarısız. Lütfen tekrar deneyin."
+    }
+  },
   "agentIdleTimeout": "Agent Boşta Kalma Süresi (dk)",
   "agentIdleTimeoutDesc": "Bellek boşaltmak için boşta kalan Agent süreçlerini bu süre sonunda sonlandır",
   "gemini": "Gemini",
