@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/renderer/services/i18n';
 import { useNavigate } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
+import WindowControls from '@renderer/components/layout/WindowControls';
+import '@renderer/components/layout/Titlebar/titlebar.css';
 import { useAuth } from '../../hooks/context/AuthContext';
 import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
@@ -229,116 +231,124 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className='flex items-center justify-center min-h-100vh bg-base p-16px'>
-      {messageContext}
-      <div className='relative w-100% max-w-380px bg-1 border border-b-base rounded-12px shadow-lg p-32px'>
-        <div className='absolute top-16px right-16px'>
-          <Select
-            size='mini'
-            value={i18n.language}
-            onChange={handleLanguageChange}
-            style={{ width: 110 }}
-            aria-label={t('login.languageToggle')}
-          >
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <Select.Option key={lang.code} value={lang.code}>
-                {lang.label}
-              </Select.Option>
-            ))}
-          </Select>
-        </div>
-
-        <div className='flex flex-col items-center gap-8px mb-24px'>
-          <img src={loginLogo} alt={t('login.brand')} className='w-56px h-56px object-contain' />
-          <h1 className='text-20px font-semibold text-t-primary m-0'>{t('login.brand')}</h1>
-          <p className='text-12px text-t-secondary text-center m-0 leading-relaxed'>{subtitle}</p>
-        </div>
-
-        {step === 'credentials' && (
-          <Form layout='vertical'>
-            <Form.Item label={t('login.username')} layout='vertical'>
-              <Input
-                value={username}
-                onChange={setUsername}
-                placeholder={t('login.usernamePlaceholder')}
-                autoComplete='username'
-                disabled={loading}
-                onPressEnter={() => {
-                  if (!loading) void handleLogin();
-                }}
-              />
-            </Form.Item>
-            <Form.Item label={t('login.password')} layout='vertical'>
-              <Input.Password
-                value={password}
-                onChange={setPassword}
-                placeholder={t('login.passwordPlaceholder')}
-                autoComplete='current-password'
-                disabled={loading}
-                onPressEnter={() => {
-                  if (!loading) void handleLogin();
-                }}
-              />
-            </Form.Item>
-            <div className='mb-16px'>
-              <Checkbox checked={rememberMe} onChange={setRememberMe} disabled={loading}>
-                {t('login.rememberMe')}
-              </Checkbox>
-            </div>
-            <Button type='primary' long loading={loading} onClick={() => void handleLogin()}>
-              {loading ? t('login.submitting') : t('login.submit')}
-            </Button>
-          </Form>
-        )}
-
-        {step === 'groups' && (
-          <div>
-            <Form.Item
-              label={t('settings.newApiLogin.group')}
-              layout='vertical'
-              extra={<span className='text-11px text-t-secondary'>{t('settings.newApiLogin.groupHint')}</span>}
+    <div className='flex flex-col min-h-100vh bg-base'>
+      <header
+        className='flex items-center justify-end h-32px shrink-0'
+        style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      >
+        <WindowControls />
+      </header>
+      <div className='flex-1 flex items-center justify-center p-16px'>
+        {messageContext}
+        <div className='relative w-100% max-w-380px bg-1 border border-b-base rounded-12px shadow-lg p-32px'>
+          <div className='absolute top-16px right-16px'>
+            <Select
+              size='mini'
+              value={i18n.language}
+              onChange={handleLanguageChange}
+              style={{ width: 110 }}
+              aria-label={t('login.languageToggle')}
             >
-              <Select
-                value={selectedGroup || undefined}
-                onChange={setSelectedGroup}
-                placeholder={t('settings.newApiLogin.groupPlaceholder')}
-                disabled={loading || groups.length === 0}
-                notFoundContent={t('settings.newApiLogin.noGroups')}
-              >
-                {groups.map((g) => (
-                  <Select.Option key={g.name} value={g.name}>
-                    <div className='flex items-center justify-between gap-12px'>
-                      <span className='font-medium'>{g.name}</span>
-                      <span className='text-11px text-t-secondary truncate'>
-                        {g.desc || '-'}
-                        {g.ratio ? ` · ${g.ratio}` : ''}
-                      </span>
-                    </div>
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-            <div className='flex gap-8px'>
-              <Button
-                type='primary'
-                loading={loading}
-                disabled={!selectedGroup}
-                onClick={() => void handleConfirmGroup()}
-                long
-              >
-                {t('settings.newApiLogin.useGroup')}
-              </Button>
-              <Button onClick={handleBackToCredentials} disabled={loading}>
-                {t('settings.newApiLogin.switchAccount')}
-              </Button>
-            </div>
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <Select.Option key={lang.code} value={lang.code}>
+                  {lang.label}
+                </Select.Option>
+              ))}
+            </Select>
           </div>
-        )}
 
-        <div className='mt-24px pt-16px border-t border-b-base text-center text-11px text-t-tertiary'>
-          <span>{t('login.footerPrimary')}</span>
-          <span className='mx-8px'>•</span>
-          <span>{t('login.footerSecondary')}</span>
+          <div className='flex flex-col items-center gap-8px mb-24px'>
+            <img src={loginLogo} alt={t('login.brand')} className='w-56px h-56px object-contain' />
+            <h1 className='text-20px font-semibold text-t-primary m-0'>{t('login.brand')}</h1>
+            <p className='text-12px text-t-secondary text-center m-0 leading-relaxed'>{subtitle}</p>
+          </div>
+
+          {step === 'credentials' && (
+            <Form layout='vertical'>
+              <Form.Item label={t('login.username')} layout='vertical'>
+                <Input
+                  value={username}
+                  onChange={setUsername}
+                  placeholder={t('login.usernamePlaceholder')}
+                  autoComplete='username'
+                  disabled={loading}
+                  onPressEnter={() => {
+                    if (!loading) void handleLogin();
+                  }}
+                />
+              </Form.Item>
+              <Form.Item label={t('login.password')} layout='vertical'>
+                <Input.Password
+                  value={password}
+                  onChange={setPassword}
+                  placeholder={t('login.passwordPlaceholder')}
+                  autoComplete='current-password'
+                  disabled={loading}
+                  onPressEnter={() => {
+                    if (!loading) void handleLogin();
+                  }}
+                />
+              </Form.Item>
+              <div className='mb-16px'>
+                <Checkbox checked={rememberMe} onChange={setRememberMe} disabled={loading}>
+                  {t('login.rememberMe')}
+                </Checkbox>
+              </div>
+              <Button type='primary' long loading={loading} onClick={() => void handleLogin()}>
+                {loading ? t('login.submitting') : t('login.submit')}
+              </Button>
+            </Form>
+          )}
+
+          {step === 'groups' && (
+            <div>
+              <Form.Item
+                label={t('settings.newApiLogin.group')}
+                layout='vertical'
+                extra={<span className='text-11px text-t-secondary'>{t('settings.newApiLogin.groupHint')}</span>}
+              >
+                <Select
+                  value={selectedGroup || undefined}
+                  onChange={setSelectedGroup}
+                  placeholder={t('settings.newApiLogin.groupPlaceholder')}
+                  disabled={loading || groups.length === 0}
+                  notFoundContent={t('settings.newApiLogin.noGroups')}
+                >
+                  {groups.map((g) => (
+                    <Select.Option key={g.name} value={g.name}>
+                      <div className='flex items-center justify-between gap-12px'>
+                        <span className='font-medium'>{g.name}</span>
+                        <span className='text-11px text-t-secondary truncate'>
+                          {g.desc || '-'}
+                          {g.ratio ? ` · ${g.ratio}` : ''}
+                        </span>
+                      </div>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <div className='flex gap-8px'>
+                <Button
+                  type='primary'
+                  loading={loading}
+                  disabled={!selectedGroup}
+                  onClick={() => void handleConfirmGroup()}
+                  long
+                >
+                  {t('settings.newApiLogin.useGroup')}
+                </Button>
+                <Button onClick={handleBackToCredentials} disabled={loading}>
+                  {t('settings.newApiLogin.switchAccount')}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className='mt-24px pt-16px border-t border-b-base text-center text-11px text-t-tertiary'>
+            <span>{t('login.footerPrimary')}</span>
+            <span className='mx-8px'>•</span>
+            <span>{t('login.footerSecondary')}</span>
+          </div>
         </div>
       </div>
     </div>
