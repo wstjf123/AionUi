@@ -4,16 +4,23 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Wallet, Refresh } from '@icon-park/react';
+import { Wallet } from '@icon-park/react';
 import { Button, Tooltip } from '@arco-design/web-react';
-import { ipcBridge } from '@/common';
 import type { IProvider } from '@/common/config/storage';
-import type { NewApiBalanceResult } from '@/common/types/provider/newApi';
 import { isNewApiPlatform } from '@/common/utils/platformConstants';
 import useSWR from 'swr';
 import { PROVIDERS_SWR_KEY, fetchProviders } from '@/renderer/hooks/agent/useModelProviderList';
+import { getProviderAccount } from '@/renderer/services/newApiAccountStore';
+
+// new-api stores quota in 1/QuotaPerUnit USD (default QuotaPerUnit = 500000),
+// so for a USD display the user's remaining "credit" = (quota - used_quota) /
+// 500000. This widget intentionally reads from the login-time snapshot stashed
+// in localStorage rather than calling /dashboard/billing/subscription —
+// that endpoint reflects the unlimited group token we provision, not the user's
+// account balance, and would always return "unlimited".
+const QUOTA_PER_UNIT = 500_000;
 
 const formatAmount = (amount: number): string => {
   if (amount >= 100) return amount.toFixed(2);
@@ -23,8 +30,6 @@ const formatAmount = (amount: number): string => {
 
 const NewApiBalance: React.FC = () => {
   const { t } = useTranslation();
-  const [state, setState] = useState<NewApiBalanceResult | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const { data: providers } = useSWR<IProvider[]>(PROVIDERS_SWR_KEY, fetchProviders, {
     revalidateOnFocus: false,
@@ -32,64 +37,23 @@ const NewApiBalance: React.FC = () => {
   });
 
   const provider = providers?.find((p) => isNewApiPlatform(p.platform));
-
-  const refresh = useCallback(async () => {
-    if (!provider || !provider.api_key || !provider.base_url) {
-      setState(null);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await ipcBridge.newApiAuth.fetchBalance.invoke({
-        base_url: provider.base_url,
-        api_key: provider.api_key,
-      });
-      setState(res);
-    } finally {
-      setLoading(false);
-    }
-  }, [provider]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const profile = provider ? getProviderAccount(provider.id)?.profile : undefined;
 
   if (!provider) {
     return null;
   }
 
   let label: string;
-  if (loading && !state) {
-    label = t('settings.newApiLogin.balanceLoading');
-  } else if (!state) {
+  if (!profile) {
     label = '—';
-  } else if (!state.success) {
-    label = t('settings.newApiLogin.balanceError');
-  } else if (state.unlimited) {
-    label = t('settings.newApiLogin.balanceUnlimited');
-  } else if (typeof state.amount === 'number') {
-    label = formatAmount(state.amount);
   } else {
-    label = '—';
+    const remainingUnits = (profile.quota - profile.used_quota) / QUOTA_PER_UNIT;
+    label = formatAmount(Math.max(0, remainingUnits));
   }
 
   return (
     <Tooltip content={t('settings.newApiLogin.balanceTooltip')}>
-      <Button
-        size='small'
-        type='outline'
-        onClick={() => {
-          void refresh();
-        }}
-        disabled={loading}
-        icon={
-          loading ? (
-            <Refresh theme='outline' size={14} className='animate-spin' />
-          ) : (
-            <Wallet theme='outline' size={14} />
-          )
-        }
-      >
+      <Button size='small' type='outline' icon={<Wallet theme='outline' size={14} />}>
         <span className='font-medium mr-4px'>{t('settings.newApiLogin.balanceLabel')}</span>
         <span>{label}</span>
       </Button>

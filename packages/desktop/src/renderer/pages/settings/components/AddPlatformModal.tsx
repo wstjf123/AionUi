@@ -195,12 +195,15 @@ const ProviderLogo: React.FC<{ logo: string | null; name: string; size?: number 
  */
 export interface NewApiLoginPanelProps {
   onProvisioned: (payload: { base_url: string; api_key: string; models: string[]; group: string }) => void;
+  /** Optional initial username; useful for "switch group" flows where the
+   * user is already signed in and only needs to re-confirm the password. */
+  defaultUsername?: string;
 }
 
-export const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned }) => {
+export const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisioned, defaultUsername }) => {
   const { t } = useTranslation();
   const [message, messageContext] = Message.useMessage();
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(defaultUsername ?? '');
   const [password, setPassword] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);

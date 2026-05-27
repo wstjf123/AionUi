@@ -11,7 +11,7 @@ import { Key, Logout, SwitchButton, User, Wallet } from '@icon-park/react';
 import { ipcBridge } from '@/common';
 import type { IProvider } from '@/common/config/storage';
 import { isNewApiPlatform } from '@/common/utils/platformConstants';
-import type { NewApiBalanceResult, NewApiSelfProfile } from '@/common/types/provider/newApi';
+import type { NewApiSelfProfile } from '@/common/types/provider/newApi';
 import { useAuth } from '@/renderer/hooks/context/AuthContext';
 import {
   deleteProviderAccount,
@@ -40,7 +40,6 @@ const AccountSettings: React.FC = () => {
   const [message, messageContext] = Message.useMessage();
   const [providers, setProviders] = useState<IProvider[]>([]);
   const [profile, setProfile] = useState<NewApiSelfProfile | null>(null);
-  const [balance, setBalance] = useState<NewApiBalanceResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -74,29 +73,17 @@ const AccountSettings: React.FC = () => {
   useEffect(() => {
     if (!primary) {
       setProfile(null);
-      setBalance(null);
       setLoading(false);
       return;
     }
-    // Profile comes from the snapshot stashed at login time (no live
-    // /api/user/self request needed). Balance is fetched fresh because it
-    // changes between sessions and the api_key is stable.
+    // Profile (incl. quota / used_quota for the balance row) comes from the
+    // snapshot stashed at login time. No live /api/user/self request needed —
+    // balance reflects "what the user had at last login", which is good
+    // enough for the dashboard and avoids the unlimited-token trap of
+    // /dashboard/billing/subscription.
     setProfile(primary.account.profile ?? null);
     setProfileError(primary.account.profile ? null : t('settings.account.errors.unknown'));
-    let cancelled = false;
-    setLoading(true);
-    void (async () => {
-      const balanceRes = await ipcBridge.newApiAuth.fetchBalance.invoke({
-        base_url: primary.provider.base_url,
-        api_key: primary.provider.api_key,
-      });
-      if (cancelled) return;
-      setBalance(balanceRes);
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    setLoading(false);
   }, [primary, t]);
 
   const sameAccountProviderIds = useMemo<string[]>(() => {
@@ -287,7 +274,7 @@ const AccountSettings: React.FC = () => {
           <InfoRow label={t('settings.account.group')} value={group} />
           <InfoRow
             label={t('settings.account.balance')}
-            value={renderBalance(balance, t)}
+            value={renderBalance(profile, t)}
             icon={<Wallet theme='outline' size={14} />}
           />
           <InfoRow
@@ -391,7 +378,10 @@ const AccountSettings: React.FC = () => {
         footer={null}
         unmountOnExit
       >
-        <NewApiLoginPanel onProvisioned={(payload) => void handleSwitchGroup(payload)} />
+        <NewApiLoginPanel
+          defaultUsername={primary?.account.username}
+          onProvisioned={(payload) => void handleSwitchGroup(payload)}
+        />
       </Modal>
     </SettingsPageWrapper>
   );
@@ -411,12 +401,14 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode; icon?: React.Re
   </div>
 );
 
-const renderBalance = (balance: NewApiBalanceResult | null, t: (k: string) => string): React.ReactNode => {
-  if (!balance) return '—';
-  if (!balance.success) return t('settings.newApiLogin.balanceError');
-  if (balance.unlimited) return t('settings.newApiLogin.balanceUnlimited');
-  if (typeof balance.amount === 'number') return formatAmount(balance.amount);
-  return '—';
+const renderBalance = (profile: NewApiSelfProfile | null, t: (k: string) => string): React.ReactNode => {
+  if (!profile) return '—';
+  // Match the unit math new-api uses for USD-mode subscriptions: amount =
+  // (quota - used_quota) / QuotaPerUnit, default QuotaPerUnit = 500000.
+  const QUOTA_PER_UNIT = 500_000;
+  const remaining = (profile.quota - profile.used_quota) / QUOTA_PER_UNIT;
+  if (!Number.isFinite(remaining)) return '—';
+  return `$${formatAmount(Math.max(0, remaining))}`;
 };
 
 export default AccountSettings;
