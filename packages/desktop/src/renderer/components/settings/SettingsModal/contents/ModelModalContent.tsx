@@ -671,138 +671,134 @@ const ModelModalContent: React.FC = () => {
                             {platform.name.replace(/^New API · /, '') || '—'}
                           </span>
                         </div>
-                        <div className='text-12px text-t-tertiary'>
-                          {t('settings.newApiLogin.groupHint')}
-                        </div>
-                        <Button
-                          type='primary'
-                          size='small'
-                          onClick={() => setSwitchGroupTarget(platform)}
-                        >
+                        <div className='text-12px text-t-tertiary'>{t('settings.newApiLogin.groupHint')}</div>
+                        <Button type='primary' size='small' onClick={() => setSwitchGroupTarget(platform)}>
                           {t('settings.newApiLogin.switchGroup')}
                         </Button>
                       </div>
                     ) : (
-                    (platform.models ?? []).map((model: string, index: number, arr: string[]) => {
-                      const isNewApiProvider = isNewApiPlatform(platform.platform);
-                      const modelProtocol = platform.model_protocols?.[model] || 'openai';
-                      const model_health = platform.model_health?.[model];
-                      const healthStatus = model_health?.status || 'unknown';
+                      (platform.models ?? []).map((model: string, index: number, arr: string[]) => {
+                        const isNewApiProvider = isNewApiPlatform(platform.platform);
+                        const modelProtocol = platform.model_protocols?.[model] || 'openai';
+                        const model_health = platform.model_health?.[model];
+                        const healthStatus = model_health?.status || 'unknown';
 
-                      return (
-                        <div key={model}>
-                          <div className='flex items-center justify-between px-8px py-12px transition-colors hover:bg-[var(--fill-0)]'>
-                            <div className='flex items-center gap-8px'>
-                              {/* 健康状态指示器 / Health status indicator */}
-                              {healthStatus !== 'unknown' && (
-                                <Tooltip
-                                  content={
-                                    <div>
-                                      <div className='flex items-center gap-4px'>
-                                        <span>{healthStatus === 'healthy' ? '✅' : '❌'}</span>
-                                        <span>
-                                          {healthStatus === 'healthy' ? t('common.success') : t('common.failed')}
-                                        </span>
+                        return (
+                          <div key={model}>
+                            <div className='flex items-center justify-between px-8px py-12px transition-colors hover:bg-[var(--fill-0)]'>
+                              <div className='flex items-center gap-8px'>
+                                {/* 健康状态指示器 / Health status indicator */}
+                                {healthStatus !== 'unknown' && (
+                                  <Tooltip
+                                    content={
+                                      <div>
+                                        <div className='flex items-center gap-4px'>
+                                          <span>{healthStatus === 'healthy' ? '✅' : '❌'}</span>
+                                          <span>
+                                            {healthStatus === 'healthy' ? t('common.success') : t('common.failed')}
+                                          </span>
+                                        </div>
+                                        {model_health?.latency && (
+                                          <div className='text-12px mt-4px'>
+                                            {t('settings.latency')}: {model_health.latency}ms
+                                          </div>
+                                        )}
+                                        {model_health?.error && (
+                                          <div className='text-12px mt-4px'>{model_health.error}</div>
+                                        )}
+                                        {model_health?.last_check && (
+                                          <div className='text-12px mt-4px'>
+                                            {t('mcp.lastCheck')}: {new Date(model_health.last_check).toLocaleString()}
+                                          </div>
+                                        )}
                                       </div>
-                                      {model_health?.latency && (
-                                        <div className='text-12px mt-4px'>
-                                          {t('settings.latency')}: {model_health.latency}ms
-                                        </div>
-                                      )}
-                                      {model_health?.error && (
-                                        <div className='text-12px mt-4px'>{model_health.error}</div>
-                                      )}
-                                      {model_health?.last_check && (
-                                        <div className='text-12px mt-4px'>
-                                          {t('mcp.lastCheck')}: {new Date(model_health.last_check).toLocaleString()}
-                                        </div>
-                                      )}
-                                    </div>
-                                  }
-                                >
-                                  <div
-                                    className={`w-8px h-8px rounded-full ${healthStatus === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`}
+                                    }
+                                  >
+                                    <div
+                                      className={`w-8px h-8px rounded-full ${healthStatus === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`}
+                                    />
+                                  </Tooltip>
+                                )}
+
+                                <span className='text-14px text-t-primary'>{model}</span>
+
+                                {/* New API 协议标签（点击循环切换）/ New API protocol badge (click to cycle) */}
+                                {isNewApiProvider && (
+                                  <Tag
+                                    size='small'
+                                    color={getProtocolColor(modelProtocol)}
+                                    className='cursor-pointer select-none'
+                                    onClick={() => {
+                                      const nextProtocol = getNextProtocol(modelProtocol);
+                                      const newProtocols = { ...platform.model_protocols };
+                                      newProtocols[model] = nextProtocol;
+                                      updatePlatform({ ...platform, model_protocols: newProtocols }, () => {});
+                                    }}
+                                  >
+                                    {getProtocolLabel(modelProtocol)}
+                                  </Tag>
+                                )}
+
+                                {/* 模型启用开关 / Model enable switch */}
+                                <Switch
+                                  size='small'
+                                  checked={isModelEnabled(platform, model)}
+                                  onChange={(checked) => toggleModelEnabled(platform, model, checked)}
+                                />
+                              </div>
+
+                              <div className='flex items-center gap-6px shrink-0'>
+                                {/* 心跳检测按钮 / Health check button */}
+                                <Tooltip content={t('settings.healthCheck')}>
+                                  <Button
+                                    size='mini'
+                                    className='!w-28px !h-28px !min-w-28px !bg-[var(--color-bg-1)] text-t-secondary hover:text-t-primary hover:!bg-[var(--fill-0)]'
+                                    icon={<Heartbeat theme='outline' size='16' />}
+                                    loading={healthCheckLoading[`${platform.id}-${model}`]}
+                                    onClick={() => performHealthCheck(platform, model)}
                                   />
                                 </Tooltip>
-                              )}
 
-                              <span className='text-14px text-t-primary'>{model}</span>
-
-                              {/* New API 协议标签（点击循环切换）/ New API protocol badge (click to cycle) */}
-                              {isNewApiProvider && (
-                                <Tag
-                                  size='small'
-                                  color={getProtocolColor(modelProtocol)}
-                                  className='cursor-pointer select-none'
-                                  onClick={() => {
-                                    const nextProtocol = getNextProtocol(modelProtocol);
+                                <Popconfirm
+                                  title={t('settings.deleteModelConfirm')}
+                                  onOk={() => {
+                                    const newModels = platform.models.filter((item: string) => item !== model);
+                                    // 同时清理模型相关状态，避免删除后重加模型时复用脏状态
+                                    // Clean all per-model state to avoid stale state on re-add.
                                     const newProtocols = { ...platform.model_protocols };
-                                    newProtocols[model] = nextProtocol;
-                                    updatePlatform({ ...platform, model_protocols: newProtocols }, () => {});
+                                    const newModelEnabled = { ...platform.model_enabled };
+                                    const newModelHealth = { ...platform.model_health };
+                                    delete newProtocols[model];
+                                    delete newModelEnabled[model];
+                                    delete newModelHealth[model];
+
+                                    updatePlatform(
+                                      {
+                                        ...platform,
+                                        models: newModels,
+                                        model_protocols:
+                                          Object.keys(newProtocols).length > 0 ? newProtocols : undefined,
+                                        model_enabled:
+                                          Object.keys(newModelEnabled).length > 0 ? newModelEnabled : undefined,
+                                        model_health:
+                                          Object.keys(newModelHealth).length > 0 ? newModelHealth : undefined,
+                                      },
+                                      () => {}
+                                    );
                                   }}
                                 >
-                                  {getProtocolLabel(modelProtocol)}
-                                </Tag>
-                              )}
-
-                              {/* 模型启用开关 / Model enable switch */}
-                              <Switch
-                                size='small'
-                                checked={isModelEnabled(platform, model)}
-                                onChange={(checked) => toggleModelEnabled(platform, model, checked)}
-                              />
+                                  <Button
+                                    size='mini'
+                                    className='!w-28px !h-28px !min-w-28px !bg-[var(--color-bg-1)] text-t-secondary hover:text-t-primary hover:!bg-[var(--fill-0)]'
+                                    icon={<DeleteFour theme='outline' size='18' strokeWidth={2} />}
+                                  />
+                                </Popconfirm>
+                              </div>
                             </div>
-
-                            <div className='flex items-center gap-6px shrink-0'>
-                              {/* 心跳检测按钮 / Health check button */}
-                              <Tooltip content={t('settings.healthCheck')}>
-                                <Button
-                                  size='mini'
-                                  className='!w-28px !h-28px !min-w-28px !bg-[var(--color-bg-1)] text-t-secondary hover:text-t-primary hover:!bg-[var(--fill-0)]'
-                                  icon={<Heartbeat theme='outline' size='16' />}
-                                  loading={healthCheckLoading[`${platform.id}-${model}`]}
-                                  onClick={() => performHealthCheck(platform, model)}
-                                />
-                              </Tooltip>
-
-                              <Popconfirm
-                                title={t('settings.deleteModelConfirm')}
-                                onOk={() => {
-                                  const newModels = platform.models.filter((item: string) => item !== model);
-                                  // 同时清理模型相关状态，避免删除后重加模型时复用脏状态
-                                  // Clean all per-model state to avoid stale state on re-add.
-                                  const newProtocols = { ...platform.model_protocols };
-                                  const newModelEnabled = { ...platform.model_enabled };
-                                  const newModelHealth = { ...platform.model_health };
-                                  delete newProtocols[model];
-                                  delete newModelEnabled[model];
-                                  delete newModelHealth[model];
-
-                                  updatePlatform(
-                                    {
-                                      ...platform,
-                                      models: newModels,
-                                      model_protocols: Object.keys(newProtocols).length > 0 ? newProtocols : undefined,
-                                      model_enabled:
-                                        Object.keys(newModelEnabled).length > 0 ? newModelEnabled : undefined,
-                                      model_health: Object.keys(newModelHealth).length > 0 ? newModelHealth : undefined,
-                                    },
-                                    () => {}
-                                  );
-                                }}
-                              >
-                                <Button
-                                  size='mini'
-                                  className='!w-28px !h-28px !min-w-28px !bg-[var(--color-bg-1)] text-t-secondary hover:text-t-primary hover:!bg-[var(--fill-0)]'
-                                  icon={<DeleteFour theme='outline' size='18' strokeWidth={2} />}
-                                />
-                              </Popconfirm>
-                            </div>
+                            {index < arr.length - 1 && <Divider className='!my-0 !border-[var(--color-border-2)]/70' />}
                           </div>
-                          {index < arr.length - 1 && <Divider className='!my-0 !border-[var(--color-border-2)]/70' />}
-                        </div>
-                      );
-                    })
+                        );
+                      })
                     )}
                   </Collapse.Item>
                 </Collapse>
