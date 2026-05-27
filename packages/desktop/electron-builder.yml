@@ -133,6 +133,11 @@ nsis:
   artifactName: ${productName}-${version}-${os}-${arch}.${ext}
   differentialPackage: false
 
+# Portable needs its own artifactName — otherwise it reuses win.artifactName
+# (same template as nsis) and overwrites the NSIS installer in out/.
+portable:
+  artifactName: ${productName}-${version}-${os}-${arch}-portable.${ext}
+
 mac:
   target:
     - dmg

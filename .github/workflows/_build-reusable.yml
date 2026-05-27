@@ -50,6 +50,14 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache bun install store
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -128,6 +136,15 @@ jobs:
 
       - name: Cache status
         run: echo "electron-cache-hit=${{ steps.electron-cache.outputs.cache-hit }}"
+
+      - name: Cache bun install store
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-install-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-install-${{ runner.os }}-${{ matrix.arch }}-
+            bun-install-${{ runner.os }}-
 
       - name: Install dependencies
         uses: nick-fields/retry@v3

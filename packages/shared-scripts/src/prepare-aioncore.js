@@ -218,6 +218,24 @@ function prepareAioncore(options) {
 
   console.log(`Preparing aioncore for ${runtimeKey} (version: ${tag})`);
 
+  // Cache short-circuit: if the binary is already present and the manifest
+  // records the same version, reuse it. Skips a network round-trip when
+  // callers double-invoke (e.g. CI runs this once as a dedicated step, then
+  // build-with-builder.js invokes it again inside the packaging flow).
+  const manifestPath = path.join(targetDir, 'manifest.json');
+  if (fs.existsSync(targetBinaryPath) && fs.existsSync(manifestPath)) {
+    try {
+      const cached = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      if (cached && cached.version === tag) {
+        console.log(`  Cache hit: reusing aioncore from ${targetDir} (version ${tag})`);
+        return { prepared: true, dir: targetDir, sourceType: 'cache' };
+      }
+      console.log(`  Cache mismatch: manifest version=${cached.version}, want ${tag} — refreshing`);
+    } catch (error) {
+      console.log(`  Cache check failed (${error.message}) — refreshing`);
+    }
+  }
+
   removeDirectorySafe(targetDir);
   ensureDirectory(targetDir);
 
