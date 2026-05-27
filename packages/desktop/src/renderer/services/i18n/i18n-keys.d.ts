@@ -1484,6 +1484,7 @@ export type I18nKey =
   | 'settings.newApiLogin.balanceLoading'
   | 'settings.newApiLogin.balanceTooltip'
   | 'settings.newApiLogin.balanceUnlimited'
+  | 'settings.newApiLogin.currentGroup'
   | 'settings.newApiLogin.endpointHint'
   | 'settings.newApiLogin.errors.empty'
   | 'settings.newApiLogin.errors.invalid_credentials'
