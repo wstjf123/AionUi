@@ -17,6 +17,17 @@ const path = require('path');
 const GITHUB_OWNER = 'iOfficeAI';
 const GITHUB_REPO = 'AionCore';
 
+// Patched release overrides per platform-arch.
+// Windows x64 uses a fork that fixes the aion-compact Windows CRLF stripping bug
+// (collapse_cr_lines strips all cmd.exe output on Windows).
+const PATCHED_SOURCES = {
+  'win32-x64': {
+    owner: 'wstjf123',
+    repo: 'aionrs-patched',
+    version: 'v0.1.27-patched',
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -108,8 +119,8 @@ function getAssetName(platform, arch, tag) {
   return `aioncore-${tag}-${normalizedArch}-${normalizedPlatform}${ext}`;
 }
 
-function getDownloadUrl(assetName, tag) {
-  return `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${tag}/${assetName}`;
+function getDownloadUrl(assetName, tag, owner, repo) {
+  return `https://github.com/${owner}/${repo}/releases/download/${tag}/${assetName}`;
 }
 
 function downloadFile(url, outputPath) {
@@ -155,13 +166,13 @@ function findBinaryInDir(dir, binaryName) {
   return null;
 }
 
-function downloadAndExtract(platform, arch, tag) {
+function downloadAndExtract(platform, arch, tag, owner, repo) {
   const assetName = getAssetName(platform, arch, tag);
   if (!assetName) {
     throw new Error(`Unsupported aioncore target: ${platform}-${arch}`);
   }
 
-  const url = getDownloadUrl(assetName, tag);
+  const url = getDownloadUrl(assetName, tag, owner, repo);
   const tempDir = path.join(os.tmpdir(), 'aioncore-prepare', tag, `${platform}-${arch}`);
   const archivePath = path.join(tempDir, assetName);
   const extractDir = path.join(tempDir, 'extracted');
@@ -199,15 +210,40 @@ function prepareAioncore(options) {
   const { projectRoot, platform, arch, version = 'latest' } = options;
   const runtimeKey = `${platform}-${arch}`;
 
+  // Check if this platform-arch has a patched source override.
+  const patchedSource = PATCHED_SOURCES[runtimeKey];
+  if (patchedSource) {
+    const savedOwner = GITHUB_OWNER;
+    // Temporarily redirect to patched repo for this build.
+    // We shadow the module-level constants via local variables passed through.
+    return _prepareAioncoreFromSource(
+      projectRoot, platform, arch,
+      patchedSource.owner, patchedSource.repo, patchedSource.version
+    );
+  }
+
+  return _prepareAioncoreFromSource(projectRoot, platform, arch, GITHUB_OWNER, GITHUB_REPO, version);
+}
+
+function _prepareAioncoreFromSource(projectRoot, platform, arch, owner, repo, version) {
+  const runtimeKey = `${platform}-${arch}`;
+
   // Resolve the actual version tag — asset filenames include the tag
   let tag;
   if (version === 'latest') {
-    const resolved = resolveLatestTag();
+    const token = process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '';
+    let resolved = null;
+    try {
+      const out = execSync(`gh api repos/${owner}/${repo}/releases/latest --jq .tag_name`, {
+        encoding: 'utf-8', timeout: 15000,
+      }).trim();
+      if (out) resolved = out;
+    } catch {}
     if (!resolved) {
-      throw new Error('Failed to resolve latest aioncore release tag from GitHub API');
+      throw new Error(`Failed to resolve latest aioncore release tag for ${owner}/${repo}`);
     }
     tag = resolved;
-    console.log(`Resolved aioncore "latest" → ${tag}`);
+    console.log(`Resolved aioncore "latest" → ${tag} (${owner}/${repo})`);
   } else {
     tag = version.startsWith('v') ? version : `v${version}`;
   }
@@ -247,12 +283,12 @@ function prepareAioncore(options) {
   // 1. Download from GitHub releases
   if (!sourcePath) {
     try {
-      const result = downloadAndExtract(platform, arch, tag);
+      const result = downloadAndExtract(platform, arch, tag, owner, repo);
       sourcePath = result.binaryPath;
       tempDir = result.tempDir;
       sourceType = 'download';
       sourceDetail = { url: result.url };
-      console.log(`  Downloaded from GitHub releases`);
+      console.log(`  Downloaded from GitHub releases (${owner}/${repo})`);
     } catch (error) {
       console.warn(`  Download failed: ${error.message}`);
     }
