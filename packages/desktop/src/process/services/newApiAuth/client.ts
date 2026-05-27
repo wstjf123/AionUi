@@ -277,13 +277,29 @@ async function fetchAccessToken(session: SessionEntry): Promise<string | null> {
       method: 'GET',
       headers: { ...HEADERS_FOR_API, Cookie: session.cookie, 'New-Api-User': String(session.userId) },
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.warn(`[newApiAuth] fetchAccessToken: HTTP ${response.status} from /api/user/token`);
+      return null;
+    }
     const body = await readJson(response);
-    if (!body || typeof body !== 'object') return null;
-    const envelope = body as { success?: boolean; data?: unknown };
-    if (!envelope.success) return null;
-    return typeof envelope.data === 'string' && envelope.data.length > 0 ? envelope.data : null;
-  } catch {
+    if (!body || typeof body !== 'object') {
+      console.warn('[newApiAuth] fetchAccessToken: response body is not an object');
+      return null;
+    }
+    const envelope = body as { success?: boolean; data?: unknown; message?: string };
+    if (!envelope.success) {
+      console.warn(
+        `[newApiAuth] fetchAccessToken: server returned success=false (${envelope.message ?? 'no message'})`
+      );
+      return null;
+    }
+    if (typeof envelope.data === 'string' && envelope.data.length > 0) {
+      return envelope.data;
+    }
+    console.warn('[newApiAuth] fetchAccessToken: success but data is empty/non-string');
+    return null;
+  } catch (error) {
+    console.warn('[newApiAuth] fetchAccessToken: network/parse error:', error);
     return null;
   }
 }

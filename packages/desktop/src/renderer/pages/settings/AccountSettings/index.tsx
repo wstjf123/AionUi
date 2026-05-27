@@ -123,8 +123,21 @@ const AccountSettings: React.FC = () => {
   const handleLogout = useCallback(async () => {
     setLogoutBusy(true);
     try {
-      const idsToDelete =
-        sameAccountProviderIds.length > 0 ? sameAccountProviderIds : primary ? [primary.provider.id] : [];
+      // Build the deletion set:
+      // 1. If we have an access_token (primary != null), group all providers
+      //    that share the user_id and delete them together.
+      // 2. Otherwise (token wasn't captured at login time, e.g. server didn't
+      //    return one), fall back to deleting every New API provider so the
+      //    user actually returns to the login screen instead of clicking
+      //    "Logout" with no visible effect.
+      let idsToDelete: string[];
+      if (sameAccountProviderIds.length > 0) {
+        idsToDelete = sameAccountProviderIds;
+      } else if (primary) {
+        idsToDelete = [primary.provider.id];
+      } else {
+        idsToDelete = providers.filter((p) => isNewApiPlatform(p.platform)).map((p) => p.id);
+      }
       for (const id of idsToDelete) {
         await ipcBridge.mode.deleteProvider.invoke({ id });
         deleteProviderAccount(id);
@@ -134,7 +147,7 @@ const AccountSettings: React.FC = () => {
       setLogoutBusy(false);
       setLogoutOpen(false);
     }
-  }, [primary, refresh, sameAccountProviderIds]);
+  }, [primary, providers, refresh, sameAccountProviderIds]);
 
   const handleSwitchGroup = useCallback(
     async (payload: { base_url: string; api_key: string; models: string[]; group: string }) => {
