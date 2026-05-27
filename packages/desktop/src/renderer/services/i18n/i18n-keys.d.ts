@@ -1482,6 +1482,7 @@ export type I18nKey =
   | 'settings.newApiLogin.balanceError'
   | 'settings.newApiLogin.balanceLabel'
   | 'settings.newApiLogin.balanceLoading'
+  | 'settings.newApiLogin.balanceSnapshotTip'
   | 'settings.newApiLogin.balanceTooltip'
   | 'settings.newApiLogin.balanceUnlimited'
   | 'settings.newApiLogin.currentGroup'

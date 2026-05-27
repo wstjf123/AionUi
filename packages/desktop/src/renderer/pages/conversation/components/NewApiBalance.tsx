@@ -66,7 +66,9 @@ const NewApiBalance: React.FC = () => {
   const canRefresh = !!account?.session_id;
 
   return (
-    <Tooltip content={canRefresh ? t('settings.newApiLogin.balanceTooltip') : t('settings.newApiLogin.balanceSnapshotTip')}>
+    <Tooltip
+      content={canRefresh ? t('settings.newApiLogin.balanceTooltip') : t('settings.newApiLogin.balanceSnapshotTip')}
+    >
       <Button
         size='small'
         type='outline'

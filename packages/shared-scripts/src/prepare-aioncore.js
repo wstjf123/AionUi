@@ -217,8 +217,12 @@ function prepareAioncore(options) {
     // Temporarily redirect to patched repo for this build.
     // We shadow the module-level constants via local variables passed through.
     return _prepareAioncoreFromSource(
-      projectRoot, platform, arch,
-      patchedSource.owner, patchedSource.repo, patchedSource.version
+      projectRoot,
+      platform,
+      arch,
+      patchedSource.owner,
+      patchedSource.repo,
+      patchedSource.version
     );
   }
 
@@ -235,7 +239,8 @@ function _prepareAioncoreFromSource(projectRoot, platform, arch, owner, repo, ve
     let resolved = null;
     try {
       const out = execSync(`gh api repos/${owner}/${repo}/releases/latest --jq .tag_name`, {
-        encoding: 'utf-8', timeout: 15000,
+        encoding: 'utf-8',
+        timeout: 15000,
       }).trim();
       if (out) resolved = out;
     } catch {}
