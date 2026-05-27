@@ -14,7 +14,11 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AddModelModal from '@/renderer/pages/settings/components/AddModelModal';
 import AddPlatformModal, { NewApiLoginPanel } from '@/renderer/pages/settings/components/AddPlatformModal';
-import { isNewApiPlatform, NEW_API_PROTOCOL_OPTIONS, detectNewApiProtocol } from '@/renderer/utils/model/modelPlatforms';
+import {
+  isNewApiPlatform,
+  NEW_API_PROTOCOL_OPTIONS,
+  detectNewApiProtocol,
+} from '@/renderer/utils/model/modelPlatforms';
 import EditModeModal from '@/renderer/pages/settings/components/EditModeModal';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import { useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';

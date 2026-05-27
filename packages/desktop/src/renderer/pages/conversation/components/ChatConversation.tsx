@@ -209,10 +209,7 @@ const ChatConversation: React.FC<{
   const isAionrsConversation = conversation?.type === 'aionrs';
 
   const { data: providers } = useProvidersQuery();
-  const newApiProvider = useMemo(
-    () => providers?.find((p) => isNewApiPlatform(p.platform)),
-    [providers]
-  );
+  const newApiProvider = useMemo(() => providers?.find((p) => isNewApiPlatform(p.platform)), [providers]);
 
   // 使用统一的 Hook 获取预设助手信息（ACP/Codex 会话）
   // Use unified hook for preset assistant info (ACP/Codex conversations)
