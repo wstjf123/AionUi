@@ -5,7 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
-import { fetchBalance, fetchGroups, getSelf, login, logout, provision, updatePassword } from './client';
+import { fetchBalance, fetchGroups, issueAccessToken, login, logout, provision, updatePassword } from './client';
 
 /**
  * Wire the New API account-login IPC handlers. Owned by the service so it
@@ -17,6 +17,6 @@ export function initNewApiAuthBridge(): void {
   ipcBridge.newApiAuth.provision.provider(async (params) => provision(params));
   ipcBridge.newApiAuth.logout.provider(async (params) => logout(params));
   ipcBridge.newApiAuth.fetchBalance.provider(async (params) => fetchBalance(params));
-  ipcBridge.newApiAuth.getSelf.provider(async (params) => getSelf(params));
+  ipcBridge.newApiAuth.issueAccessToken.provider(async (params) => issueAccessToken(params));
   ipcBridge.newApiAuth.updatePassword.provider(async (params) => updatePassword(params));
 }

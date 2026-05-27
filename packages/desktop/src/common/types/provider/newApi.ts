@@ -83,7 +83,14 @@ export interface NewApiAccount {
   user_id: number;
   username: string;
   display_name?: string;
-  access_token: string;
+  /**
+   * Snapshot of the user's profile fetched at login time via session cookie.
+   * AccountSettings reads this directly instead of re-issuing /api/user/self —
+   * the access_token path proved unreliable because GET /api/user/token
+   * rotates the user's access_token on every issuance (breaking the
+   * previously-issued one stored in localStorage).
+   */
+  profile?: NewApiSelfProfile;
 }
 
 export interface NewApiProvisionPayload {
@@ -167,6 +174,18 @@ export interface NewApiSelfResult {
   /** Present when success=false */
   code?: NewApiSelfErrorCode;
   /** Present when success=false */
+  message?: string;
+}
+
+/** Result of `GET /api/user/token` (rotate-and-return). Used only by the
+ * change-password flow, which needs a short-lived access_token to call
+ * `PUT /api/user/self` and then discards the session. */
+export interface NewApiAccessTokenResult {
+  success: boolean;
+  /** Present when success=true */
+  access_token?: string;
+  /** Present when success=false */
+  code?: 'session_expired' | 'unknown';
   message?: string;
 }
 

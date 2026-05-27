@@ -16,7 +16,7 @@ import { useAuth } from '../../hooks/context/AuthContext';
 import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
 import { detectNewApiProtocol } from '@/renderer/utils/model/modelPlatforms';
-import { saveProviderAccount } from '@/renderer/services/newApiAccountStore';
+import { deleteProviderAccount, saveProviderAccount } from '@/renderer/services/newApiAccountStore';
 import { NEW_API_DEFAULT_BASE_URL, NEW_API_PLATFORM_ID } from '@/common/utils/platformConstants';
 import type { NewApiGroup } from '@/common/types/provider/newApi';
 import { Button, Checkbox, Form, Input, Message, Select } from '@arco-design/web-react';
@@ -236,8 +236,17 @@ const LoginPage: React.FC = () => {
       }
 
       // Stash account info locally — the providers API doesn't persist it.
+      // Always overwrite (or clear) so a stale entry from a previous login
+      // doesn't survive into AccountSettings, where it would be sent to
+      // /api/user/self as a now-revoked access_token and trigger
+      // "Session expired". When data.account is undefined (the server
+      // didn't return /api/user/token this time) we delete the stash so
+      // AccountSettings just shows the "needs re-login" state instead of
+      // failing the profile fetch.
       if (data.account) {
         saveProviderAccount(providerId, data.account);
+      } else {
+        deleteProviderAccount(providerId);
       }
 
       void ipcBridge.newApiAuth.logout.invoke({ session_id: sessionId });

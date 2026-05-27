@@ -43,6 +43,7 @@ import type {
   NewApiProvisionResult,
   NewApiSelfRequest,
   NewApiSelfResult,
+  NewApiAccessTokenResult,
   NewApiSessionRequest,
   NewApiUpdatePasswordRequest,
   NewApiUpdatePasswordResult,
@@ -451,7 +452,7 @@ export const newApiAuth = {
   provision: bridge.buildProvider<NewApiProvisionResult, NewApiProvisionRequest>('new-api.provision'),
   logout: bridge.buildProvider<void, NewApiSessionRequest>('new-api.logout'),
   fetchBalance: bridge.buildProvider<NewApiBalanceResult, NewApiBalanceRequest>('new-api.fetch-balance'),
-  getSelf: bridge.buildProvider<NewApiSelfResult, NewApiSelfRequest>('new-api.get-self'),
+  issueAccessToken: bridge.buildProvider<NewApiAccessTokenResult, NewApiSessionRequest>('new-api.issue-access-token'),
   updatePassword: bridge.buildProvider<NewApiUpdatePasswordResult, NewApiUpdatePasswordRequest>(
     'new-api.update-password'
   ),

@@ -10,7 +10,7 @@ export {
   provision,
   logout,
   fetchBalance,
-  getSelf,
+  issueAccessToken,
   updatePassword,
   __resetSessionsForTest,
 } from './client';

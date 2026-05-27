@@ -50,15 +50,14 @@ const AccountSettings: React.FC = () => {
   const [pwForm, setPwForm] = useState<PasswordForm>({ current: '', next: '', confirm: '' });
   const [switchGroupOpen, setSwitchGroupOpen] = useState(false);
 
-  // Pick the first new-api provider that has account info captured in
-  // localStorage. Same user logged into multiple groups will appear as
-  // multiple providers — we operate on the first and group them by user_id
-  // for logout below.
+  // Pick the first new-api provider with stashed account info. Same user
+  // logged into multiple groups will appear as multiple providers — we
+  // operate on the first and group them by user_id for logout below.
   const primary = useMemo(() => {
     for (const p of providers) {
       if (!isNewApiPlatform(p.platform)) continue;
       const account = getProviderAccount(p.id);
-      if (account?.access_token) return { provider: p, account };
+      if (account) return { provider: p, account };
     }
     return null;
   }, [providers]);
@@ -79,26 +78,19 @@ const AccountSettings: React.FC = () => {
       setLoading(false);
       return;
     }
+    // Profile comes from the snapshot stashed at login time (no live
+    // /api/user/self request needed). Balance is fetched fresh because it
+    // changes between sessions and the api_key is stable.
+    setProfile(primary.account.profile ?? null);
+    setProfileError(primary.account.profile ? null : t('settings.account.errors.unknown'));
     let cancelled = false;
     setLoading(true);
-    setProfileError(null);
     void (async () => {
-      const [selfRes, balanceRes] = await Promise.all([
-        ipcBridge.newApiAuth.getSelf.invoke({
-          base_url: primary.provider.base_url,
-          access_token: primary.account.access_token,
-        }),
-        ipcBridge.newApiAuth.fetchBalance.invoke({
-          base_url: primary.provider.base_url,
-          api_key: primary.provider.api_key,
-        }),
-      ]);
+      const balanceRes = await ipcBridge.newApiAuth.fetchBalance.invoke({
+        base_url: primary.provider.base_url,
+        api_key: primary.provider.api_key,
+      });
       if (cancelled) return;
-      if (selfRes.success && selfRes.user) {
-        setProfile(selfRes.user);
-      } else {
-        setProfileError(t(`settings.account.errors.${selfRes.code ?? 'unknown'}`));
-      }
       setBalance(balanceRes);
       setLoading(false);
     })();
@@ -195,14 +187,35 @@ const AccountSettings: React.FC = () => {
     if (!passwordSubmittable) return;
     setPasswordBusy(true);
     try {
+      // Spin up a short-lived session: the access_token returned by login
+      // is needed by /api/user/self (PUT). We discard it (and the session)
+      // immediately after the password update completes, since the new
+      // password rotates anything we held anyway.
+      const loginRes = await ipcBridge.newApiAuth.login.invoke({
+        username: primary.account.username,
+        password: pwForm.current,
+      });
+      if (!loginRes.success || !loginRes.session_id) {
+        message.error(t('settings.account.errors.invalid_credentials'));
+        return;
+      }
+      const tokenRes = await ipcBridge.newApiAuth.issueAccessToken.invoke({
+        session_id: loginRes.session_id,
+      });
+      if (!tokenRes.success || !tokenRes.access_token) {
+        await ipcBridge.newApiAuth.logout.invoke({ session_id: loginRes.session_id });
+        message.error(t('settings.account.errors.unknown'));
+        return;
+      }
       const res = await ipcBridge.newApiAuth.updatePassword.invoke({
         base_url: primary.provider.base_url,
-        access_token: primary.account.access_token,
+        access_token: tokenRes.access_token,
         username: primary.account.username,
         display_name: primary.account.display_name,
         original_password: pwForm.current,
         new_password: pwForm.next,
       });
+      await ipcBridge.newApiAuth.logout.invoke({ session_id: loginRes.session_id });
       if (!res.success) {
         message.error(t(`settings.account.errors.${res.code ?? 'unknown'}`));
         return;
@@ -210,8 +223,9 @@ const AccountSettings: React.FC = () => {
       message.success(t('settings.account.password.successHint'));
       setPasswordOpen(false);
       setPwForm({ current: '', next: '', confirm: '' });
-      // The sk-... api_key keeps working after a password change, but the
-      // access_token may rotate on next login — recommend re-auth.
+      // After a password change, the api_key on the saved providers may also
+      // need refreshing on next sign-in. Force the user back to login by
+      // clearing existing New API providers.
       for (const id of sameAccountProviderIds) {
         await ipcBridge.mode.deleteProvider.invoke({ id });
         deleteProviderAccount(id);

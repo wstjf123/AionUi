@@ -16,8 +16,7 @@ import type {
   NewApiProvisionRequest,
   NewApiProvisionResult,
   NewApiSelfProfile,
-  NewApiSelfRequest,
-  NewApiSelfResult,
+  NewApiAccessTokenResult,
   NewApiSessionRequest,
   NewApiUpdatePasswordRequest,
   NewApiUpdatePasswordResult,
@@ -263,26 +262,36 @@ async function fetchTokenKey(session: SessionEntry, tokenId: number): Promise<st
 }
 
 /**
- * Fetch (or regenerate) the personal access_token for the logged-in user.
- *
- * ⚠️ `GET /api/user/token` REPLACES any previous access_token the user had
- * issued — there is no "read current" endpoint server-side. If the same user
- * has a token in use elsewhere (CLI, another device), our login invalidates
- * it. That's a known compromise of this flow; users are warned implicitly by
- * needing to re-login on any other client they had connected.
+ * Fetch the user's profile (group, quota, used_quota, etc.) via session
+ * cookie. This avoids the access_token rotation trap of GET /api/user/token,
+ * which silently invalidates any previously-issued token. The new-api
+ * UserAuth middleware accepts session-cookie auth on /api/user/self, so we
+ * can take the snapshot at login time and stash it locally for AccountSettings
+ * to read offline.
  */
-async function fetchAccessToken(session: SessionEntry): Promise<string | null> {
+async function fetchUserSelf(session: SessionEntry): Promise<NewApiSelfProfile | null> {
   try {
-    const response = await fetch(joinUrl('/api/user/token'), {
+    const response = await fetch(joinUrl('/api/user/self'), {
       method: 'GET',
       headers: { ...HEADERS_FOR_API, Cookie: session.cookie, 'New-Api-User': String(session.userId) },
     });
     if (!response.ok) return null;
     const body = await readJson(response);
     if (!body || typeof body !== 'object') return null;
-    const envelope = body as { success?: boolean; data?: unknown };
-    if (!envelope.success) return null;
-    return typeof envelope.data === 'string' && envelope.data.length > 0 ? envelope.data : null;
+    const envelope = body as { success?: boolean; data?: Record<string, unknown> };
+    if (!envelope.success || !envelope.data) return null;
+    const data = envelope.data;
+    const id = Number(data.id);
+    const username = typeof data.username === 'string' ? data.username : null;
+    if (!Number.isFinite(id) || !username) return null;
+    const display_name = typeof data.display_name === 'string' ? data.display_name : undefined;
+    const email = typeof data.email === 'string' ? data.email : undefined;
+    const role = typeof data.role === 'number' ? data.role : undefined;
+    const group = typeof data.group === 'string' ? data.group : '';
+    const quota = typeof data.quota === 'number' ? data.quota : 0;
+    const used_quota = typeof data.used_quota === 'number' ? data.used_quota : 0;
+    const request_count = typeof data.request_count === 'number' ? data.request_count : 0;
+    return { id, username, display_name, email, role, group, quota, used_quota, request_count };
   } catch {
     return null;
   }
@@ -377,18 +386,15 @@ export async function provision(req: NewApiProvisionRequest): Promise<NewApiProv
     return { success: false, code: 'models_failed', message: 'Failed to load models for the user.' };
   }
 
-  // Best-effort: pull an access_token so the Account settings page can call
-  // `/api/user/self` later without re-prompting for the password. Login still
-  // succeeds even if this step fails — Account management just won't be wired.
-  const accessToken = await fetchAccessToken(session);
-  const account: NewApiAccount | undefined = accessToken
-    ? {
-        user_id: session.userId,
-        username: session.username,
-        display_name: session.displayName,
-        access_token: accessToken,
-      }
-    : undefined;
+  // Snapshot the user's profile via session cookie. AccountSettings reads
+  // it directly so it never needs to re-authenticate against /api/user/self.
+  const profile = await fetchUserSelf(session);
+  const account: NewApiAccount = {
+    user_id: session.userId,
+    username: session.username,
+    display_name: session.displayName,
+    profile: profile ?? undefined,
+  };
 
   return {
     success: true,
@@ -498,55 +504,37 @@ function selfHeaders(accessToken: string): Record<string, string> {
 }
 
 /**
- * Fetch the current user's profile using the persisted access_token.
- * Backed by `/api/user/self` — auth is via Authorization header, no cookie.
+ * Issue a fresh access_token via `GET /api/user/token`. The endpoint
+ * rotates: any previously-issued token gets revoked. Used only by the
+ * change-password flow which needs a short-lived token to call
+ * `PUT /api/user/self` and discards both the session and the token
+ * immediately after.
  */
-export async function getSelf(req: NewApiSelfRequest): Promise<NewApiSelfResult> {
-  const baseUrl = (req.base_url ?? '').replace(/\/+$/, '');
-  const accessToken = (req.access_token ?? '').trim();
-  if (!baseUrl || !accessToken) {
-    return { success: false, code: 'session_expired', message: 'Missing credentials.' };
+export async function issueAccessToken(req: NewApiSessionRequest): Promise<NewApiAccessTokenResult> {
+  const session = getSession(req.session_id);
+  if (!session) {
+    return { success: false, code: 'session_expired', message: 'Session expired.' };
   }
-
-  let response: Response;
   try {
-    response = await fetch(`${baseUrl}/api/user/self`, {
+    const response = await fetch(joinUrl('/api/user/token'), {
       method: 'GET',
-      headers: selfHeaders(accessToken),
+      headers: { ...HEADERS_FOR_API, Cookie: session.cookie, 'New-Api-User': String(session.userId) },
     });
+    if (!response.ok) {
+      return { success: false, code: 'unknown', message: `HTTP ${response.status}` };
+    }
+    const body = await readJson(response);
+    if (!body || typeof body !== 'object') {
+      return { success: false, code: 'unknown', message: 'Unexpected response.' };
+    }
+    const envelope = body as { success?: boolean; data?: unknown; message?: string };
+    if (!envelope.success || typeof envelope.data !== 'string' || envelope.data.length === 0) {
+      return { success: false, code: 'unknown', message: pickMessage(body, 'Failed to issue access token.') };
+    }
+    return { success: true, access_token: envelope.data };
   } catch (error) {
-    return { success: false, code: 'network_error', message: (error as Error).message ?? 'Network error' };
+    return { success: false, code: 'unknown', message: (error as Error).message ?? 'Network error' };
   }
-
-  if (response.status === 401) {
-    return { success: false, code: 'session_expired', message: 'Session expired. Please sign in again.' };
-  }
-  if (response.status >= 500) {
-    return { success: false, code: 'server_error', message: `Server error (${response.status}).` };
-  }
-
-  const body = await readJson(response);
-  if (!body || typeof body !== 'object') {
-    return { success: false, code: 'unknown', message: 'Unexpected response from server.' };
-  }
-  const envelope = body as { success?: boolean; data?: Record<string, unknown>; message?: string };
-  if (!envelope.success || !envelope.data) {
-    return { success: false, code: 'unknown', message: pickMessage(body, 'Failed to load profile.') };
-  }
-
-  const data = envelope.data;
-  const user: NewApiSelfProfile = {
-    id: typeof data.id === 'number' ? data.id : Number(data.id ?? 0),
-    username: typeof data.username === 'string' ? data.username : '',
-    display_name: typeof data.display_name === 'string' ? data.display_name : undefined,
-    email: typeof data.email === 'string' ? data.email : undefined,
-    role: typeof data.role === 'number' ? data.role : undefined,
-    group: typeof data.group === 'string' ? data.group : '',
-    quota: typeof data.quota === 'number' ? data.quota : 0,
-    used_quota: typeof data.used_quota === 'number' ? data.used_quota : 0,
-    request_count: typeof data.request_count === 'number' ? data.request_count : 0,
-  };
-  return { success: true, user };
 }
 
 /**
