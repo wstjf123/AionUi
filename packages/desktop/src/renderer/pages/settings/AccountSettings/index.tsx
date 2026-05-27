@@ -414,10 +414,10 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode; icon?: React.Re
 
 const renderBalance = (profile: NewApiSelfProfile | null, t: (k: string) => string): React.ReactNode => {
   if (!profile) return '—';
-  // Match the unit math new-api uses for USD-mode subscriptions: amount =
-  // (quota - used_quota) / QuotaPerUnit, default QuotaPerUnit = 500000.
+  // upstream new-api: `user.Quota` is the live remaining balance (mutated by Increase/Decrease
+  // UserQuota); `used_quota` is cumulative usage, so remaining = quota / QuotaPerUnit.
   const QUOTA_PER_UNIT = 500_000;
-  const remaining = (profile.quota - profile.used_quota) / QUOTA_PER_UNIT;
+  const remaining = profile.quota / QUOTA_PER_UNIT;
   if (!Number.isFinite(remaining)) return '—';
   return `$${formatAmount(Math.max(0, remaining))}`;
 };

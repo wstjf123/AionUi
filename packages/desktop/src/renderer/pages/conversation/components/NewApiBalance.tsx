@@ -59,7 +59,9 @@ const NewApiBalance: React.FC = () => {
   if (!profile) {
     label = '—';
   } else {
-    const remainingUnits = (profile.quota - profile.used_quota) / QUOTA_PER_UNIT;
+    // upstream new-api: `user.Quota` is the live remaining balance (Increase/DecreaseUserQuota
+    // mutates it on top-up / consumption); `used_quota` is cumulative usage, not a denominator.
+    const remainingUnits = profile.quota / QUOTA_PER_UNIT;
     label = `$${formatAmount(Math.max(0, remainingUnits))}`;
   }
 
