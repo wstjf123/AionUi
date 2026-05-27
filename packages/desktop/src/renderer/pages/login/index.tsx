@@ -96,6 +96,16 @@ const LoginPage: React.FC = () => {
     }
   }, [navigate, status]);
 
+  // Switch the main window into login layout (small, centered, locked size)
+  // on mount and restore the user's previous chat-window bounds on unmount.
+  // The IPC is a noop in browser/web mode where windowControls aren't wired.
+  useEffect(() => {
+    void ipcBridge.windowControls.setLoginMode.invoke({ active: true }).catch(() => {});
+    return () => {
+      void ipcBridge.windowControls.setLoginMode.invoke({ active: false }).catch(() => {});
+    };
+  }, []);
+
   const handleLanguageChange = useCallback((next: string) => {
     changeLanguage(next).catch((error: Error) => {
       console.error('Failed to change language:', error);
@@ -175,20 +185,52 @@ const LoginPage: React.FC = () => {
         modelProtocols[m] = detectNewApiProtocol(m);
       }
 
-      const providerId = uuid();
+      // Find existing New API provider so re-login overwrites it instead of
+      // accumulating duplicates. The legacy flow always created a fresh
+      // provider, which under "require login on every start" produced one
+      // extra row per launch.
+      let providerId: string;
+      let isUpdate = false;
       try {
-        await ipcBridge.mode.createProvider.invoke({
-          id: providerId,
-          platform: NEW_API_PLATFORM_ID,
-          name: `New API · ${data.group}`,
-          base_url: data.base_url,
-          api_key: data.api_key,
-          models: data.models,
-          model_protocols: modelProtocols,
-          enabled: true,
-        });
+        const existing = await ipcBridge.mode.listProviders.invoke();
+        const match = Array.isArray(existing) ? existing.find((p) => p.platform === NEW_API_PLATFORM_ID) : undefined;
+        if (match?.id) {
+          providerId = match.id;
+          isUpdate = true;
+        } else {
+          providerId = uuid();
+        }
       } catch (error) {
-        console.error('Failed to create provider:', error);
+        console.warn('Failed to list providers, falling back to fresh id:', error);
+        providerId = uuid();
+      }
+
+      try {
+        if (isUpdate) {
+          await ipcBridge.mode.updateProvider.invoke({
+            id: providerId,
+            platform: NEW_API_PLATFORM_ID,
+            name: `New API · ${data.group}`,
+            base_url: data.base_url,
+            api_key: data.api_key,
+            models: data.models,
+            model_protocols: modelProtocols,
+            enabled: true,
+          });
+        } else {
+          await ipcBridge.mode.createProvider.invoke({
+            id: providerId,
+            platform: NEW_API_PLATFORM_ID,
+            name: `New API · ${data.group}`,
+            base_url: data.base_url,
+            api_key: data.api_key,
+            models: data.models,
+            model_protocols: modelProtocols,
+            enabled: true,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to persist provider:', error);
         message.error(t('settings.newApiLogin.errors.unknown'));
         return;
       }
@@ -231,17 +273,17 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className='flex flex-col min-h-100vh bg-base'>
+    <div className='flex flex-col h-100vh bg-base overflow-hidden'>
       <header
         className='flex items-center justify-end h-32px shrink-0'
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <WindowControls />
       </header>
-      <div className='flex-1 flex items-center justify-center p-16px'>
+      <div className='flex-1 flex flex-col p-32px overflow-y-auto'>
         {messageContext}
-        <div className='relative w-100% max-w-380px bg-1 border border-b-base rounded-12px shadow-lg p-32px'>
-          <div className='absolute top-16px right-16px'>
+        <div className='relative'>
+          <div className='absolute top-0 right-0'>
             <Select
               size='mini'
               value={i18n.language}

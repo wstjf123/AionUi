@@ -44,6 +44,7 @@ import {
   attachWindowBoundsPersistence,
   loadSavedWindowBounds,
   resolveInitialBounds,
+  type WindowBoundsPersistController,
 } from './process/utils/windowBounds';
 import {
   clearPendingDeepLinkUrl,
@@ -250,6 +251,63 @@ const scheduleBackendMigrations = (): void => {
   })();
 };
 
+// Login window dimensions: small fixed-size dialog. The renderer's LoginPage
+// flips into this layout via ipcBridge.windowControls.setLoginMode({active:true})
+// on mount; on unmount (after successful auth) it flips back and restores the
+// previous chat-window bounds the user had before.
+const LOGIN_WINDOW_WIDTH = 420;
+const LOGIN_WINDOW_HEIGHT = 600;
+
+const registerLoginModeHandler = (win: BrowserWindow, boundsController: WindowBoundsPersistController): void => {
+  let savedBounds: Electron.Rectangle | null = null;
+  let savedResizable = true;
+  let savedMaximizable = true;
+  let savedMinSize: [number, number] = [MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT];
+  let active = false;
+
+  ipcBridge.windowControls.setLoginMode.provider(({ active: shouldActivate }) => {
+    if (win.isDestroyed()) return Promise.resolve();
+    if (active === shouldActivate) return Promise.resolve();
+
+    if (shouldActivate) {
+      // Capture current state so we can restore on logout.
+      if (win.isMaximized()) win.unmaximize();
+      savedBounds = win.getNormalBounds();
+      savedResizable = win.isResizable();
+      savedMaximizable = win.isMaximizable();
+      savedMinSize = win.getMinimumSize() as [number, number];
+
+      // Pause persistence so the small login bounds don't get written to
+      // disk — otherwise next launch would open in 420x600 even after the
+      // user grew the chat window.
+      boundsController.setEnabled(false);
+
+      const display = require('electron').screen.getDisplayNearestPoint(win.getBounds());
+      const { x: dx, y: dy, width: dw, height: dh } = display.workArea;
+      win.setMinimumSize(LOGIN_WINDOW_WIDTH, LOGIN_WINDOW_HEIGHT);
+      win.setBounds({
+        x: Math.round(dx + (dw - LOGIN_WINDOW_WIDTH) / 2),
+        y: Math.round(dy + (dh - LOGIN_WINDOW_HEIGHT) / 2),
+        width: LOGIN_WINDOW_WIDTH,
+        height: LOGIN_WINDOW_HEIGHT,
+      });
+      win.setResizable(false);
+      win.setMaximizable(false);
+      active = true;
+    } else {
+      win.setMinimumSize(savedMinSize[0], savedMinSize[1]);
+      win.setResizable(savedResizable);
+      win.setMaximizable(savedMaximizable);
+      if (savedBounds) {
+        win.setBounds(savedBounds);
+      }
+      boundsController.setEnabled(true);
+      active = false;
+    }
+    return Promise.resolve();
+  });
+};
+
 const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): void => {
   console.log('[AionUi] Creating main window...');
   const { x: windowX, y: windowY, width: windowWidth, height: windowHeight } = resolveInitialBounds();
@@ -338,7 +396,10 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
 
   setupZoomForWindow(mainWindow);
   registerWindowMaximizeListeners(mainWindow);
-  attachWindowBoundsPersistence(mainWindow, (bounds) => ProcessConfig.set('window.bounds', bounds));
+  const boundsController = attachWindowBoundsPersistence(mainWindow, (bounds) =>
+    ProcessConfig.set('window.bounds', bounds)
+  );
+  registerLoginModeHandler(mainWindow, boundsController);
 
   // Initialize auto-updater service (skip when disabled via env, e.g. E2E / CI)
   // 自动更新功能已禁用

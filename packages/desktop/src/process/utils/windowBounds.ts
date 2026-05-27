@@ -89,11 +89,16 @@ const boundsOverlapAnyDisplay = (bounds: WindowBounds): boolean => {
  * followed by ⌘Q still flushes to disk before the app exits — otherwise the
  * window would reset to the default size on next launch.
  */
+export interface WindowBoundsPersistController {
+  setEnabled(enabled: boolean): void;
+}
+
 export const attachWindowBoundsPersistence = (
   win: BrowserWindow,
   persist: (bounds: WindowBounds) => void | Promise<unknown>
-): void => {
+): WindowBoundsPersistController => {
   let saveTimer: NodeJS.Timeout | null = null;
+  let enabled = true;
 
   const fireWrite = (bounds: WindowBounds): void => {
     // Update the in-memory cache synchronously so a subsequent
@@ -108,12 +113,14 @@ export const attachWindowBoundsPersistence = (
   };
 
   const saveNow = (): void => {
+    if (!enabled) return;
     if (win.isDestroyed()) return;
     if (win.isMaximized() || win.isFullScreen() || win.isMinimized()) return;
     fireWrite(win.getNormalBounds());
   };
 
   const scheduleSave = () => {
+    if (!enabled) return;
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(saveNow, PERSIST_DEBOUNCE_MS);
   };
@@ -127,4 +134,16 @@ export const attachWindowBoundsPersistence = (
     }
     saveNow();
   });
+
+  return {
+    setEnabled(next) {
+      enabled = next;
+      if (!next && saveTimer) {
+        // Drop any pending debounced write — login-mode bounds should
+        // never land in storage even if a resize event already queued one.
+        clearTimeout(saveTimer);
+        saveTimer = null;
+      }
+    },
+  };
 };

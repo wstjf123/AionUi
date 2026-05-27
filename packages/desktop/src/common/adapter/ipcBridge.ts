@@ -1009,6 +1009,11 @@ export const windowControls = {
   close: bridge.buildProvider<void, void>('window-controls:close'),
   isMaximized: bridge.buildProvider<boolean, void>('window-controls:is-maximized'),
   maximizedChanged: bridge.buildEmitter<{ is_maximized: boolean }>('window-controls:maximized-changed'),
+  // Switch the main window into a fixed-size login layout (small, centered,
+  // non-resizable, non-maximizable) and back. The renderer calls this from
+  // LoginPage's mount/unmount; main remembers the prior bounds so leaving
+  // login restores the user's previous chat-window size.
+  setLoginMode: bridge.buildProvider<void, { active: boolean }>('window-controls:set-login-mode'),
 };
 
 // ---------------------------------------------------------------------------
