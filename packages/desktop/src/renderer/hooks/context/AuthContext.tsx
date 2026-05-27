@@ -42,7 +42,6 @@ interface AuthContextValue {
   login: (params: LoginParams) => Promise<LoginResult>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
-  markLoggedIn: () => void;
   clearAuthCache: () => void;
 }
 
@@ -110,27 +109,26 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [status, setStatus] = useState<AuthStatus>('checking');
   const [ready, setReady] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  // Desktop: tracks whether the user has logged in during this session
-  const sessionLoggedInRef = useRef(false);
 
   const refresh = useCallback(async () => {
     if (isDesktopRuntime) {
-      // Desktop: require login on every app start.
-      // sessionLoggedInRef is set to true by the login page after provisioning.
+      // Desktop: gate access to the app on having at least one provider
+      // configured. The login page provisions one via the New API account
+      // flow; once that lands, refresh() is called and the user is let in.
       setStatus('checking');
       try {
         const providers = await ipcBridge.mode.listProviders.invoke();
         if (Array.isArray(providers) && providers.length > 0) {
+          setStatus('authenticated');
+          setUser(null);
+          setReady(true);
           refreshNewApiProviderModels(providers);
+          return;
         }
       } catch (error) {
         console.error('Failed to list providers:', error);
       }
-      if (sessionLoggedInRef.current) {
-        setStatus('authenticated');
-      } else {
-        setStatus('unauthenticated');
-      }
+      setStatus('unauthenticated');
       setUser(null);
       setReady(true);
       return;
@@ -292,10 +290,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     }
   }, []);
 
-  const markLoggedIn = useCallback(() => {
-    sessionLoggedInRef.current = true;
-  }, []);
-
   const value = useMemo<AuthContextValue>(
     () => ({
       ready,
@@ -304,10 +298,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       login,
       logout,
       refresh,
-      markLoggedIn,
       clearAuthCache,
     }),
-    [login, logout, markLoggedIn, ready, refresh, status, user]
+    [login, logout, ready, refresh, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

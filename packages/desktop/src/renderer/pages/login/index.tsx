@@ -54,7 +54,7 @@ const SUPPORTED_LANGUAGES: { code: string; label: string }[] = [
 const LoginPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
-  const { status, refresh, markLoggedIn } = useAuth();
+  const { status, refresh } = useAuth();
   const [message, messageContext] = Message.useMessage();
 
   const [username, setUsername] = useState('');
@@ -243,7 +243,6 @@ const LoginPage: React.FC = () => {
       void ipcBridge.newApiAuth.logout.invoke({ session_id: sessionId });
 
       message.success(t('settings.newApiLogin.provisionSuccess', { group: data.group }));
-      markLoggedIn();
       await refresh();
     } finally {
       setLoading(false);

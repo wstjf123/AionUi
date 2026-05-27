@@ -7,7 +7,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Form, Input, Message, Modal, Progress, Spin } from '@arco-design/web-react';
-import { Key, Logout, User, Wallet } from '@icon-park/react';
+import { Key, Logout, SwitchButton, User, Wallet } from '@icon-park/react';
 import { ipcBridge } from '@/common';
 import type { IProvider } from '@/common/config/storage';
 import { isNewApiPlatform } from '@/common/utils/platformConstants';
@@ -18,7 +18,9 @@ import {
   getProviderAccount,
   listProviderAccounts,
 } from '@/renderer/services/newApiAccountStore';
+import { detectNewApiProtocol } from '@/renderer/utils/model/modelPlatforms';
 import SettingsPageWrapper from '../components/SettingsPageWrapper';
+import { NewApiLoginPanel } from '../components/AddPlatformModal';
 
 interface PasswordForm {
   current: string;
@@ -46,6 +48,7 @@ const AccountSettings: React.FC = () => {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [passwordBusy, setPasswordBusy] = useState(false);
   const [pwForm, setPwForm] = useState<PasswordForm>({ current: '', next: '', confirm: '' });
+  const [switchGroupOpen, setSwitchGroupOpen] = useState(false);
 
   // Pick the first new-api provider that has account info captured in
   // localStorage. Same user logged into multiple groups will appear as
@@ -132,6 +135,39 @@ const AccountSettings: React.FC = () => {
       setLogoutOpen(false);
     }
   }, [primary, refresh, sameAccountProviderIds]);
+
+  const handleSwitchGroup = useCallback(
+    async (payload: { base_url: string; api_key: string; models: string[]; group: string }) => {
+      if (!primary) {
+        setSwitchGroupOpen(false);
+        return;
+      }
+      const modelProtocols: Record<string, string> = {};
+      for (const m of payload.models) {
+        modelProtocols[m] = detectNewApiProtocol(m);
+      }
+      try {
+        await ipcBridge.mode.updateProvider.invoke({
+          id: primary.provider.id,
+          platform: primary.provider.platform,
+          name: `New API · ${payload.group}`,
+          base_url: payload.base_url,
+          api_key: payload.api_key,
+          models: payload.models,
+          model_protocols: modelProtocols,
+          enabled: true,
+        });
+        message.success(t('settings.newApiLogin.provisionSuccess', { group: payload.group }));
+        setSwitchGroupOpen(false);
+        await loadProviders();
+        await refresh();
+      } catch (error) {
+        console.error('Failed to switch group:', error);
+        message.error(t('settings.newApiLogin.errors.unknown'));
+      }
+    },
+    [loadProviders, message, primary, refresh, t]
+  );
 
   const passwordError = useMemo<string | null>(() => {
     if (!pwForm.current || !pwForm.next || !pwForm.confirm) return null;
@@ -243,6 +279,9 @@ const AccountSettings: React.FC = () => {
           <Button type='primary' icon={<Key theme='outline' size={14} />} onClick={() => setPasswordOpen(true)}>
             {t('settings.account.changePassword')}
           </Button>
+          <Button icon={<SwitchButton theme='outline' size={14} />} onClick={() => setSwitchGroupOpen(true)}>
+            {t('settings.newApiLogin.switchGroup')}
+          </Button>
           <Button status='danger' icon={<Logout theme='outline' size={14} />} onClick={() => setLogoutOpen(true)}>
             {t('settings.account.logout')}
           </Button>
@@ -316,6 +355,16 @@ const AccountSettings: React.FC = () => {
         okText={t('settings.account.logout')}
       >
         <div className='text-14px text-t-secondary'>{t('settings.account.logoutConfirmBody')}</div>
+      </Modal>
+
+      <Modal
+        title={t('settings.newApiLogin.switchGroup')}
+        visible={switchGroupOpen}
+        onCancel={() => setSwitchGroupOpen(false)}
+        footer={null}
+        unmountOnExit
+      >
+        <NewApiLoginPanel onProvisioned={(payload) => void handleSwitchGroup(payload)} />
       </Modal>
     </SettingsPageWrapper>
   );
