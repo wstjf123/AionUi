@@ -453,6 +453,7 @@ export const newApiAuth = {
   logout: bridge.buildProvider<void, NewApiSessionRequest>('new-api.logout'),
   fetchBalance: bridge.buildProvider<NewApiBalanceResult, NewApiBalanceRequest>('new-api.fetch-balance'),
   issueAccessToken: bridge.buildProvider<NewApiAccessTokenResult, NewApiSessionRequest>('new-api.issue-access-token'),
+  refreshUserProfile: bridge.buildProvider<NewApiSelfResult, NewApiSessionRequest>('new-api.refresh-user-profile'),
   updatePassword: bridge.buildProvider<NewApiUpdatePasswordResult, NewApiUpdatePasswordRequest>(
     'new-api.update-password'
   ),

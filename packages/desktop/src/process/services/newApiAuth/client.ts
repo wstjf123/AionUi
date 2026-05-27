@@ -18,6 +18,7 @@ import type {
   NewApiSelfProfile,
   NewApiAccessTokenResult,
   NewApiSessionRequest,
+  NewApiSelfResult,
   NewApiUpdatePasswordRequest,
   NewApiUpdatePasswordResult,
 } from '@/common/types/provider/newApi';
@@ -405,6 +406,7 @@ export async function provision(req: NewApiProvisionRequest): Promise<NewApiProv
       group,
       token_name: tokenName,
       account,
+      session_id: req.session_id,
     },
   };
 }
@@ -591,6 +593,18 @@ export async function updatePassword(req: NewApiUpdatePasswordRequest): Promise<
     return { success: false, code: 'unknown', message };
   }
   return { success: true };
+}
+
+export async function refreshUserProfile(req: NewApiSessionRequest): Promise<NewApiSelfResult> {
+  const session = getSession(req.session_id);
+  if (!session) {
+    return { success: false, code: 'session_expired' };
+  }
+  const profile = await fetchUserSelf(session);
+  if (!profile) {
+    return { success: false, code: 'unknown', message: 'Failed to fetch user profile.' };
+  }
+  return { success: true, user: profile };
 }
 
 // Test hook: clear sessions between vitest runs.

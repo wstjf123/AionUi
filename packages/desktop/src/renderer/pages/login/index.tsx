@@ -244,12 +244,14 @@ const LoginPage: React.FC = () => {
       // AccountSettings just shows the "needs re-login" state instead of
       // failing the profile fetch.
       if (data.account) {
-        saveProviderAccount(providerId, data.account);
+        // Embed the session_id so the balance widget can refresh via /api/user/self
+        // without re-authenticating. Session stays alive in the main process until
+        // the app restarts; logout is skipped here to preserve it.
+        saveProviderAccount(providerId, { ...data.account, session_id: data.session_id });
       } else {
         deleteProviderAccount(providerId);
+        void ipcBridge.newApiAuth.logout.invoke({ session_id: sessionId });
       }
-
-      void ipcBridge.newApiAuth.logout.invoke({ session_id: sessionId });
 
       message.success(t('settings.newApiLogin.provisionSuccess', { group: data.group }));
       await refresh();

@@ -279,7 +279,8 @@
       "network_error": "網路錯誤，請檢查連線。",
       "server_error": "伺服器異常，請稍後再試。",
       "unknown": "操作失敗。"
-    }
+    },
+    "balanceSnapshotTip": "登入時快照 — 重新登入可重新整理"
   },
   "modelProtocol": "請求協議",
   "modelProtocolTip": "選擇該模型的 API 請求格式。new-api 閘道將使用所選協議路由到上游服務。",

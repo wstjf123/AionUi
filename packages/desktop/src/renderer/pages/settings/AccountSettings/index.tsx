@@ -11,12 +11,13 @@ import { Key, Logout, SwitchButton, User, Wallet } from '@icon-park/react';
 import { ipcBridge } from '@/common';
 import type { IProvider } from '@/common/config/storage';
 import { isNewApiPlatform } from '@/common/utils/platformConstants';
-import type { NewApiSelfProfile } from '@/common/types/provider/newApi';
+import type { NewApiAccount, NewApiSelfProfile } from '@/common/types/provider/newApi';
 import { useAuth } from '@/renderer/hooks/context/AuthContext';
 import {
   deleteProviderAccount,
   getProviderAccount,
   listProviderAccounts,
+  saveProviderAccount,
 } from '@/renderer/services/newApiAccountStore';
 import { detectNewApiProtocol } from '@/renderer/utils/model/modelPlatforms';
 import SettingsPageWrapper from '../components/SettingsPageWrapper';
@@ -129,7 +130,14 @@ const AccountSettings: React.FC = () => {
   }, [primary, providers, refresh, sameAccountProviderIds]);
 
   const handleSwitchGroup = useCallback(
-    async (payload: { base_url: string; api_key: string; models: string[]; group: string }) => {
+    async (payload: {
+      base_url: string;
+      api_key: string;
+      models: string[];
+      group: string;
+      account?: NewApiAccount;
+      session_id?: string;
+    }) => {
       if (!primary) {
         setSwitchGroupOpen(false);
         return;
@@ -149,6 +157,9 @@ const AccountSettings: React.FC = () => {
           model_protocols: modelProtocols,
           enabled: true,
         });
+        if (payload.account) {
+          saveProviderAccount(primary.provider.id, { ...payload.account, session_id: payload.session_id });
+        }
         message.success(t('settings.newApiLogin.provisionSuccess', { group: payload.group }));
         setSwitchGroupOpen(false);
         await loadProviders();

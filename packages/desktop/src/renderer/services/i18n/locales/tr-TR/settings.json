@@ -279,7 +279,8 @@
       "network_error": "Ağ hatası. Lütfen bağlantınızı kontrol edin.",
       "server_error": "Sunucu hatası. Lütfen daha sonra tekrar deneyin.",
       "unknown": "İşlem başarısız."
-    }
+    },
+    "balanceSnapshotTip": "Giriş anı anlık görüntüsü — yenilemek için tekrar giriş yapın"
   },
   "modelProtocol": "İstek Protokolü",
   "modelProtocolTip": "Bu model için API istek formatını seçin. new-api ağ geçidi seçilen protokolü kullanarak yukarı akışa yönlendirecektir.",

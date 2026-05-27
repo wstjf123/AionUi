@@ -91,6 +91,12 @@ export interface NewApiAccount {
    * previously-issued one stored in localStorage).
    */
   profile?: NewApiSelfProfile;
+  /**
+   * Opaque session id kept alive in the main process. Used to refresh
+   * the profile snapshot via /api/user/self without re-authenticating.
+   * Absent after process restart (session evicted from memory).
+   */
+  session_id?: string;
 }
 
 export interface NewApiProvisionPayload {
@@ -99,8 +105,9 @@ export interface NewApiProvisionPayload {
   models: string[];
   group: string;
   token_name: string;
-  /** Optional — present when `/api/user/token` succeeded after token provisioning. */
   account?: NewApiAccount;
+  /** Session id to store in the account for profile refresh. */
+  session_id?: string;
 }
 
 export type NewApiProvisionErrorCode =

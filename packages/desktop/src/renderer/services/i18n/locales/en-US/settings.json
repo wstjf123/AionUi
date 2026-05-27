@@ -279,7 +279,8 @@
       "network_error": "Network error. Please check your connection.",
       "server_error": "Server error. Please try again later.",
       "unknown": "Operation failed."
-    }
+    },
+    "balanceSnapshotTip": "Login-time snapshot — re-login to refresh"
   },
   "modelProtocol": "Request Protocol",
   "modelProtocolTip": "Choose the API request format for this model. new-api gateway will route to the upstream using the selected protocol.",

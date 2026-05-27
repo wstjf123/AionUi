@@ -11,6 +11,7 @@ export {
   logout,
   fetchBalance,
   issueAccessToken,
+  refreshUserProfile,
   updatePassword,
   __resetSessionsForTest,
 } from './client';

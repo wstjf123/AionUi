@@ -1,6 +1,6 @@
 import type { IProvider } from '@/common/config/storage';
 import type { ProtocolDetectionResponse, ProtocolType } from '@/common/utils/protocolDetector';
-import type { NewApiGroup } from '@/common/types/provider/newApi';
+import type { NewApiAccount, NewApiGroup } from '@/common/types/provider/newApi';
 import { ipcBridge } from '@/common';
 import { uuid } from '@/common/utils';
 import { isGoogleApisHost } from '@/common/utils/urlValidation';
@@ -194,7 +194,14 @@ const ProviderLogo: React.FC<{ logo: string | null; name: string; size?: number 
  * which is then handed back to the parent form.
  */
 export interface NewApiLoginPanelProps {
-  onProvisioned: (payload: { base_url: string; api_key: string; models: string[]; group: string }) => void;
+  onProvisioned: (payload: {
+    base_url: string;
+    api_key: string;
+    models: string[];
+    group: string;
+    account?: NewApiAccount;
+    session_id?: string;
+  }) => void;
   /** Optional initial username; useful for "switch group" flows where the
    * user is already signed in and only needs to re-confirm the password. */
   defaultUsername?: string;
@@ -281,6 +288,8 @@ export const NewApiLoginPanel: React.FC<NewApiLoginPanelProps> = ({ onProvisione
         api_key: res.data.api_key,
         models: res.data.models,
         group: res.data.group,
+        account: res.data.account,
+        session_id: res.data.session_id,
       });
       message.success(t('settings.newApiLogin.provisionSuccess', { group: selectedGroup }));
     } finally {
