@@ -41,9 +41,13 @@ import type {
   NewApiLoginResult,
   NewApiProvisionRequest,
   NewApiProvisionResult,
+  NewApiRegisterRequest,
+  NewApiRegisterResult,
   NewApiSelfRequest,
   NewApiSelfResult,
   NewApiAccessTokenResult,
+  NewApiSendVerificationRequest,
+  NewApiSendVerificationResult,
   NewApiSessionRequest,
   NewApiUpdatePasswordRequest,
   NewApiUpdatePasswordResult,
@@ -456,6 +460,10 @@ export const newApiAuth = {
   refreshUserProfile: bridge.buildProvider<NewApiSelfResult, NewApiSessionRequest>('new-api.refresh-user-profile'),
   updatePassword: bridge.buildProvider<NewApiUpdatePasswordResult, NewApiUpdatePasswordRequest>(
     'new-api.update-password'
+  ),
+  register: bridge.buildProvider<NewApiRegisterResult, NewApiRegisterRequest>('new-api.register'),
+  sendEmailVerification: bridge.buildProvider<NewApiSendVerificationResult, NewApiSendVerificationRequest>(
+    'new-api.send-email-verification'
   ),
 };
 

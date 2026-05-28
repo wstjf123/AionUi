@@ -12,6 +12,8 @@ export {
   fetchBalance,
   issueAccessToken,
   refreshUserProfile,
+  register,
+  sendEmailVerification,
   updatePassword,
   __resetSessionsForTest,
 } from './client';

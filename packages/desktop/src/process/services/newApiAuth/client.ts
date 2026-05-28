@@ -15,8 +15,12 @@ import type {
   NewApiLoginResult,
   NewApiProvisionRequest,
   NewApiProvisionResult,
+  NewApiRegisterRequest,
+  NewApiRegisterResult,
   NewApiSelfProfile,
   NewApiAccessTokenResult,
+  NewApiSendVerificationRequest,
+  NewApiSendVerificationResult,
   NewApiSessionRequest,
   NewApiSelfResult,
   NewApiUpdatePasswordRequest,
@@ -605,6 +609,104 @@ export async function refreshUserProfile(req: NewApiSessionRequest): Promise<New
     return { success: false, code: 'unknown', message: 'Failed to fetch user profile.' };
   }
   return { success: true, user: profile };
+}
+
+function mapRegisterError(message: string): NewApiRegisterResult['code'] {
+  // Map the server's i18n-flavored error strings back to stable codes the
+  // renderer can translate without trusting upstream copy. The matches are
+  // intentionally broad — new-api returns the *localized* message that
+  // matches whichever Accept-Language the server picked.
+  if (/already exists|已存在|已被使用|已被注册|이미.*존재|すでに/i.test(message)) return 'user_exists';
+  if (/verification.*code|验证码|인증.*코드/i.test(message)) return 'verification_code_error';
+  if (/email.*verification|邮箱验证|이메일.*인증/i.test(message)) return 'email_verification_required';
+  if (/register.*disabled|注册.*关闭|注册.*禁用|회원가입.*비활성/i.test(message)) return 'register_disabled';
+  if (/password.*register.*disabled|密码注册.*关闭/i.test(message)) return 'password_register_disabled';
+  return 'unknown';
+}
+
+export async function register(req: NewApiRegisterRequest): Promise<NewApiRegisterResult> {
+  const username = req.username?.trim() ?? '';
+  const password = req.password ?? '';
+  // The new-api validator enforces 8-20 chars for password and max 20 for
+  // username. We pre-check the obvious cases to give a fast error without a
+  // round-trip; the server still validates authoritatively.
+  if (!username || !password) {
+    return { success: false, code: 'invalid_params', message: 'Username and password are required.' };
+  }
+  if (password.length < 8 || password.length > 20) {
+    return { success: false, code: 'invalid_params', message: 'Password must be 8-20 characters.' };
+  }
+  if (username.length > 20) {
+    return { success: false, code: 'invalid_params', message: 'Username must be at most 20 characters.' };
+  }
+
+  const body: Record<string, unknown> = { username, password };
+  if (req.email) body.email = req.email.trim();
+  if (req.verification_code) body.verification_code = req.verification_code.trim();
+  if (req.aff_code) body.aff_code = req.aff_code.trim();
+
+  let response: Response;
+  try {
+    response = await fetch(joinUrl('/api/user/register'), {
+      method: 'POST',
+      headers: HEADERS_FOR_API,
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    return { success: false, code: 'network_error', message: (error as Error).message ?? 'Network error' };
+  }
+
+  if (response.status === 429) {
+    return { success: false, code: 'rate_limited', message: 'Too many attempts.' };
+  }
+  if (response.status >= 500) {
+    return { success: false, code: 'server_error', message: `Server error (${response.status}).` };
+  }
+
+  const responseBody = await readJson(response);
+  if (!responseBody || typeof responseBody !== 'object') {
+    return { success: false, code: 'unknown', message: `Registration failed (${response.status}).` };
+  }
+  const envelope = responseBody as { success?: boolean; message?: string };
+  if (!envelope.success) {
+    const message = pickMessage(responseBody, 'Registration failed.');
+    return { success: false, code: mapRegisterError(message), message };
+  }
+  return { success: true };
+}
+
+export async function sendEmailVerification(req: NewApiSendVerificationRequest): Promise<NewApiSendVerificationResult> {
+  const email = req.email?.trim() ?? '';
+  if (!email || !/.+@.+\..+/.test(email)) {
+    return { success: false, code: 'invalid_email', message: 'Invalid email address.' };
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(joinUrl(`/api/verification?email=${encodeURIComponent(email)}`), {
+      method: 'GET',
+      headers: HEADERS_FOR_API,
+    });
+  } catch (error) {
+    return { success: false, code: 'network_error', message: (error as Error).message ?? 'Network error' };
+  }
+
+  if (response.status === 429) {
+    return { success: false, code: 'rate_limited', message: 'Too many requests. Please wait.' };
+  }
+  if (response.status >= 500) {
+    return { success: false, code: 'server_error', message: `Server error (${response.status}).` };
+  }
+
+  const body = await readJson(response);
+  if (!body || typeof body !== 'object') {
+    return { success: false, code: 'unknown', message: 'Unexpected response from server.' };
+  }
+  const envelope = body as { success?: boolean; message?: string };
+  if (!envelope.success) {
+    return { success: false, code: 'unknown', message: pickMessage(body, 'Failed to send verification code.') };
+  }
+  return { success: true };
 }
 
 // Test hook: clear sessions between vitest runs.

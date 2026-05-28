@@ -63,10 +63,22 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   // 'credentials' → username/password form. 'groups' → group picker post-login.
-  const [step, setStep] = useState<'credentials' | 'groups'>('credentials');
+  // 'register' → sign-up form for /api/user/register.
+  const [step, setStep] = useState<'credentials' | 'groups' | 'register'>('credentials');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [groups, setGroups] = useState<NewApiGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
+
+  // Register form state — separate from login fields so toggling doesn't
+  // clobber what the user has typed on the credentials form.
+  const [regUsername, setRegUsername] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regVerificationCode, setRegVerificationCode] = useState('');
+  const [regAffCode, setRegAffCode] = useState('');
+  const [sendingCode, setSendingCode] = useState(false);
+  const [codeCooldown, setCodeCooldown] = useState(0);
 
   const initialFocusDone = useRef(false);
 
@@ -270,13 +282,105 @@ const LoginPage: React.FC = () => {
     setStep('credentials');
   }, [sessionId]);
 
-  const subtitle = useMemo(
-    () =>
-      step === 'credentials'
-        ? t('settings.newApiLogin.endpointHint', { url: NEW_API_DEFAULT_BASE_URL })
-        : t('settings.newApiLogin.groupHint'),
-    [step, t]
+  // Tick the resend-code cooldown once per second while it's active. The
+  // server enforces its own rate limit on /api/verification; this is just a
+  // UX guard so users don't spam the button.
+  useEffect(() => {
+    if (codeCooldown <= 0) return;
+    const timer = setTimeout(() => setCodeCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [codeCooldown]);
+
+  const registerErrorTextForCode = useCallback(
+    (code: string | undefined, fallback: string): string => {
+      const key = `login.registerErrors.${code ?? 'unknown'}`;
+      const translated = t(key);
+      if (translated !== key) return translated;
+      return fallback;
+    },
+    [t]
   );
+
+  const handleSendVerificationCode = useCallback(async () => {
+    const email = regEmail.trim();
+    if (!email) {
+      message.error(t('login.registerErrors.invalid_email'));
+      return;
+    }
+    setSendingCode(true);
+    try {
+      const res = await ipcBridge.newApiAuth.sendEmailVerification.invoke({ email });
+      if (!res.success) {
+        message.error(registerErrorTextForCode(res.code, res.message ?? t('login.registerErrors.unknown')));
+        return;
+      }
+      message.success(t('login.registerCodeSent'));
+      setCodeCooldown(60);
+    } finally {
+      setSendingCode(false);
+    }
+  }, [message, regEmail, registerErrorTextForCode, t]);
+
+  const handleRegister = useCallback(async () => {
+    const username = regUsername.trim();
+    if (!username || !regPassword) {
+      message.error(t('login.errors.empty'));
+      return;
+    }
+    if (regPassword !== regConfirmPassword) {
+      message.error(t('login.registerErrors.password_mismatch'));
+      return;
+    }
+    if (regPassword.length < 8 || regPassword.length > 20) {
+      message.error(t('login.registerErrors.invalid_params'));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await ipcBridge.newApiAuth.register.invoke({
+        username,
+        password: regPassword,
+        email: regEmail.trim() || undefined,
+        verification_code: regVerificationCode.trim() || undefined,
+        aff_code: regAffCode.trim() || undefined,
+      });
+      if (!res.success) {
+        message.error(registerErrorTextForCode(res.code, res.message ?? t('login.registerErrors.unknown')));
+        return;
+      }
+      message.success(t('login.registerSuccess'));
+      // Prefill credentials form with the just-created account so the user
+      // can immediately sign in without retyping.
+      setUsername(username);
+      setPassword(regPassword);
+      setRegUsername('');
+      setRegPassword('');
+      setRegConfirmPassword('');
+      setRegEmail('');
+      setRegVerificationCode('');
+      setRegAffCode('');
+      setStep('credentials');
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    message,
+    regAffCode,
+    regConfirmPassword,
+    regEmail,
+    regPassword,
+    regUsername,
+    regVerificationCode,
+    registerErrorTextForCode,
+    t,
+  ]);
+
+  const subtitle = useMemo(() => {
+    if (step === 'credentials') return t('settings.newApiLogin.endpointHint', { url: NEW_API_DEFAULT_BASE_URL });
+    if (step === 'register') return t('login.registerSubtitle');
+    return t('settings.newApiLogin.groupHint');
+  }, [step, t]);
 
   if (status === 'checking') {
     return <AppLoader />;
@@ -349,6 +453,111 @@ const LoginPage: React.FC = () => {
               <Button type='primary' long loading={loading} onClick={() => void handleLogin()}>
                 {loading ? t('login.submitting') : t('login.submit')}
               </Button>
+              <div className='mt-12px text-center text-12px text-t-secondary'>
+                <span>{t('login.registerPrompt')}</span>
+                <Button
+                  type='text'
+                  size='mini'
+                  disabled={loading}
+                  onClick={() => setStep('register')}
+                  style={{ paddingInline: 4 }}
+                >
+                  {t('login.registerLink')}
+                </Button>
+              </div>
+            </Form>
+          )}
+
+          {step === 'register' && (
+            <Form layout='vertical'>
+              <Form.Item label={t('login.username')} layout='vertical'>
+                <Input
+                  value={regUsername}
+                  onChange={setRegUsername}
+                  placeholder={t('login.usernamePlaceholder')}
+                  autoComplete='username'
+                  disabled={loading}
+                  maxLength={20}
+                />
+              </Form.Item>
+              <Form.Item
+                label={t('login.password')}
+                layout='vertical'
+                extra={<span className='text-11px text-t-secondary'>{t('login.passwordHint')}</span>}
+              >
+                <Input.Password
+                  value={regPassword}
+                  onChange={setRegPassword}
+                  placeholder={t('login.passwordPlaceholder')}
+                  autoComplete='new-password'
+                  disabled={loading}
+                  maxLength={20}
+                />
+              </Form.Item>
+              <Form.Item label={t('login.confirmPassword')} layout='vertical'>
+                <Input.Password
+                  value={regConfirmPassword}
+                  onChange={setRegConfirmPassword}
+                  placeholder={t('login.confirmPasswordPlaceholder')}
+                  autoComplete='new-password'
+                  disabled={loading}
+                  maxLength={20}
+                  onPressEnter={() => {
+                    if (!loading) void handleRegister();
+                  }}
+                />
+              </Form.Item>
+              <Form.Item
+                label={t('login.email')}
+                layout='vertical'
+                extra={<span className='text-11px text-t-secondary'>{t('login.emailHint')}</span>}
+              >
+                <div className='flex gap-8px'>
+                  <Input
+                    value={regEmail}
+                    onChange={setRegEmail}
+                    placeholder={t('login.emailPlaceholder')}
+                    autoComplete='email'
+                    disabled={loading}
+                    maxLength={50}
+                  />
+                  <Button
+                    onClick={() => void handleSendVerificationCode()}
+                    loading={sendingCode}
+                    disabled={loading || sendingCode || codeCooldown > 0 || !regEmail.trim()}
+                  >
+                    {codeCooldown > 0
+                      ? t('login.registerCodeResendIn', { seconds: codeCooldown })
+                      : t('login.registerSendCode')}
+                  </Button>
+                </div>
+              </Form.Item>
+              <Form.Item label={t('login.verificationCode')} layout='vertical'>
+                <Input
+                  value={regVerificationCode}
+                  onChange={setRegVerificationCode}
+                  placeholder={t('login.verificationCodePlaceholder')}
+                  disabled={loading}
+                  maxLength={32}
+                />
+              </Form.Item>
+              <Form.Item label={t('login.affCode')} layout='vertical'>
+                <Input
+                  value={regAffCode}
+                  onChange={setRegAffCode}
+                  placeholder={t('login.affCodePlaceholder')}
+                  disabled={loading}
+                  maxLength={32}
+                />
+              </Form.Item>
+              <div className='flex gap-8px'>
+                <Button type='primary' long loading={loading} onClick={() => void handleRegister()}>
+                  {loading ? t('login.registerSubmitting') : t('login.registerSubmit')}
+                </Button>
+                <Button onClick={() => setStep('credentials')} disabled={loading}>
+                  {t('login.backToLogin')}
+                </Button>
+              </div>
             </Form>
           )}
 

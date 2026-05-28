@@ -13,6 +13,8 @@ import {
   logout,
   provision,
   refreshUserProfile,
+  register,
+  sendEmailVerification,
   updatePassword,
 } from './client';
 
@@ -29,4 +31,6 @@ export function initNewApiAuthBridge(): void {
   ipcBridge.newApiAuth.issueAccessToken.provider(async (params) => issueAccessToken(params));
   ipcBridge.newApiAuth.refreshUserProfile.provider(async (params) => refreshUserProfile(params));
   ipcBridge.newApiAuth.updatePassword.provider(async (params) => updatePassword(params));
+  ipcBridge.newApiAuth.register.provider(async (params) => register(params));
+  ipcBridge.newApiAuth.sendEmailVerification.provider(async (params) => sendEmailVerification(params));
 }

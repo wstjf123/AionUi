@@ -217,3 +217,53 @@ export interface NewApiUpdatePasswordResult {
   code?: NewApiUpdatePasswordErrorCode;
   message?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Registration — server: POST /api/user/register
+// ---------------------------------------------------------------------------
+
+export interface NewApiRegisterRequest {
+  username: string;
+  password: string;
+  /** Required when the server enables email verification. */
+  email?: string;
+  /** Required when the server enables email verification. */
+  verification_code?: string;
+  /** Inviter affiliate code, optional. */
+  aff_code?: string;
+}
+
+export type NewApiRegisterErrorCode =
+  | 'invalid_params'
+  | 'register_disabled'
+  | 'password_register_disabled'
+  | 'email_verification_required'
+  | 'verification_code_error'
+  | 'user_exists'
+  | 'rate_limited'
+  | 'network_error'
+  | 'server_error'
+  | 'unknown';
+
+export interface NewApiRegisterResult {
+  success: boolean;
+  code?: NewApiRegisterErrorCode;
+  message?: string;
+}
+
+export interface NewApiSendVerificationRequest {
+  email: string;
+}
+
+export type NewApiSendVerificationErrorCode =
+  | 'invalid_email'
+  | 'rate_limited'
+  | 'network_error'
+  | 'server_error'
+  | 'unknown';
+
+export interface NewApiSendVerificationResult {
+  success: boolean;
+  code?: NewApiSendVerificationErrorCode;
+  message?: string;
+}
