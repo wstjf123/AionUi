@@ -10,6 +10,7 @@
  */
 
 const { execSync, execFileSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -25,6 +26,7 @@ const PATCHED_SOURCES = {
     owner: 'wstjf123',
     repo: 'aionrs-patched',
     version: 'v0.1.27-patched',
+    assetDigest: 'sha256:2cc5abecb69f6cf9f26796079c589bbca8b710ed52119272dd9bb4830b08f454',
   },
 };
 
@@ -123,6 +125,27 @@ function getDownloadUrl(assetName, tag, owner, repo) {
   return `https://github.com/${owner}/${repo}/releases/download/${tag}/${assetName}`;
 }
 
+function normalizeSha256Digest(digest) {
+  if (!digest) return null;
+  return digest.startsWith('sha256:') ? digest.slice('sha256:'.length) : digest;
+}
+
+function sha256File(filePath) {
+  const hash = crypto.createHash('sha256');
+  hash.update(fs.readFileSync(filePath));
+  return hash.digest('hex');
+}
+
+function verifyAssetDigest(filePath, expectedDigest) {
+  const expected = normalizeSha256Digest(expectedDigest);
+  if (!expected) return;
+
+  const actual = sha256File(filePath);
+  if (actual !== expected) {
+    throw new Error(`Downloaded aioncore digest mismatch: expected ${expected}, got ${actual}`);
+  }
+}
+
 function downloadFile(url, outputPath) {
   console.log(`  Downloading aioncore from ${url}`);
   if (process.platform === 'win32') {
@@ -166,7 +189,7 @@ function findBinaryInDir(dir, binaryName) {
   return null;
 }
 
-function downloadAndExtract(platform, arch, tag, owner, repo) {
+function downloadAndExtract(platform, arch, tag, owner, repo, expectedAssetDigest) {
   const assetName = getAssetName(platform, arch, tag);
   if (!assetName) {
     throw new Error(`Unsupported aioncore target: ${platform}-${arch}`);
@@ -181,6 +204,7 @@ function downloadAndExtract(platform, arch, tag, owner, repo) {
   ensureDirectory(tempDir);
 
   downloadFile(url, archivePath);
+  verifyAssetDigest(archivePath, expectedAssetDigest);
   extractArchive(archivePath, extractDir, platform);
 
   const binaryName = getBinaryName(platform);
@@ -189,7 +213,7 @@ function downloadAndExtract(platform, arch, tag, owner, repo) {
     throw new Error(`Binary ${binaryName} not found in downloaded archive`);
   }
 
-  return { binaryPath, tempDir, url };
+  return { binaryPath, tempDir, url, assetDigest: expectedAssetDigest || null };
 }
 
 // ---------------------------------------------------------------------------
@@ -222,14 +246,15 @@ function prepareAioncore(options) {
       arch,
       patchedSource.owner,
       patchedSource.repo,
-      patchedSource.version
+      patchedSource.version,
+      patchedSource.assetDigest
     );
   }
 
   return _prepareAioncoreFromSource(projectRoot, platform, arch, GITHUB_OWNER, GITHUB_REPO, version);
 }
 
-function _prepareAioncoreFromSource(projectRoot, platform, arch, owner, repo, version) {
+function _prepareAioncoreFromSource(projectRoot, platform, arch, owner, repo, version, expectedAssetDigest = null) {
   const runtimeKey = `${platform}-${arch}`;
 
   // Resolve the actual version tag — asset filenames include the tag
@@ -256,6 +281,7 @@ function _prepareAioncoreFromSource(projectRoot, platform, arch, owner, repo, ve
   const targetDir = path.join(projectRoot, 'resources', 'bundled-aioncore', runtimeKey);
   const binaryName = getBinaryName(platform);
   const targetBinaryPath = path.join(targetDir, binaryName);
+  const expectedNormalizedDigest = normalizeSha256Digest(expectedAssetDigest);
 
   console.log(`Preparing aioncore for ${runtimeKey} (version: ${tag})`);
 
@@ -267,11 +293,15 @@ function _prepareAioncoreFromSource(projectRoot, platform, arch, owner, repo, ve
   if (fs.existsSync(targetBinaryPath) && fs.existsSync(manifestPath)) {
     try {
       const cached = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-      if (cached && cached.version === tag) {
+      const cachedDigest = normalizeSha256Digest(cached?.source?.assetDigest || cached?.assetDigest);
+      const digestMatches = !expectedNormalizedDigest || cachedDigest === expectedNormalizedDigest;
+      if (cached && cached.version === tag && digestMatches) {
         console.log(`  Cache hit: reusing aioncore from ${targetDir} (version ${tag})`);
         return { prepared: true, dir: targetDir, sourceType: 'cache' };
       }
-      console.log(`  Cache mismatch: manifest version=${cached.version}, want ${tag} — refreshing`);
+      console.log(
+        `  Cache mismatch: manifest version=${cached.version}, digest=${cachedDigest || 'none'}; want version=${tag}, digest=${expectedNormalizedDigest || 'none'} — refreshing`
+      );
     } catch (error) {
       console.log(`  Cache check failed (${error.message}) — refreshing`);
     }
@@ -288,11 +318,14 @@ function _prepareAioncoreFromSource(projectRoot, platform, arch, owner, repo, ve
   // 1. Download from GitHub releases
   if (!sourcePath) {
     try {
-      const result = downloadAndExtract(platform, arch, tag, owner, repo);
+      const result = downloadAndExtract(platform, arch, tag, owner, repo, expectedAssetDigest);
       sourcePath = result.binaryPath;
       tempDir = result.tempDir;
       sourceType = 'download';
-      sourceDetail = { url: result.url };
+      sourceDetail = {
+        url: result.url,
+        assetDigest: result.assetDigest,
+      };
       console.log(`  Downloaded from GitHub releases (${owner}/${repo})`);
     } catch (error) {
       console.warn(`  Download failed: ${error.message}`);
