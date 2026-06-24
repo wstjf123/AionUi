@@ -14,7 +14,7 @@ export const NEW_API_PLATFORM_ID = 'new-api';
  * 账号登录入口的固定 base URL
  * Fixed base URL for the New API account-login flow.
  */
-export const NEW_API_DEFAULT_BASE_URL = 'https://rl.oetnn.cn';
+export const NEW_API_DEFAULT_BASE_URL = 'https://rl666.top';
 
 /**
  * 检查平台是否为 New API 网关类型
