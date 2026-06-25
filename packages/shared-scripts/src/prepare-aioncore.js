@@ -26,7 +26,7 @@ const PATCHED_SOURCES = {
     owner: 'wstjf123',
     repo: 'aionrs-patched',
     version: 'v0.1.27-patched',
-    assetDigest: 'sha256:2cc5abecb69f6cf9f26796079c589bbca8b710ed52119272dd9bb4830b08f454',
+    assetDigest: 'sha256:32d82c4176e8e082f4e94612a03161bf42aa922de8bc6f88bb3532fba27cf68a',
   },
 };
 
